@@ -1,6 +1,8 @@
 import CoreController from "../core/CoreControler.js";
 import Company from "../models/db/Company.js";
 import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
+import CyrptoHelper from "../helpers/CyrptoHelper.js"
+import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 
 export default new class ShopifyAuthController extends CoreController {
     constructor() {
@@ -11,7 +13,11 @@ export default new class ShopifyAuthController extends CoreController {
     callback = async (req, res) => {
         const { code, shop } = req.query;
 
-        if (!code || !shop) return this.badRequest({ info: "Missing parameters on callback request" });
+        if (!code || !shop) return this.response(res, 
+            { 
+                info: "Missing parameters on callback request", 
+                status: HttpStatusCodes.BAD_REQUEST 
+            });
 
         const shopifyAccessToken = await this.api.getAccessToken(shop, code);
         const shopifyShopInfo = await this.api.getShopInfo(shop, shopifyAccessToken);

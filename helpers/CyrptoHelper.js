@@ -3,8 +3,8 @@ import crypto from 'crypto';
 const algorithm = 'aes-256-gcm';
 const key = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
-class CyrptoHelper {
-    encrypt = (text) => {
+export default class CyrptoHelper {
+    static encrypt = (text) => {
         const iv = crypto.randomBytes(16); 
         const cipher = crypto.createCipheriv(algorithm, key, iv);
         let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -14,7 +14,7 @@ class CyrptoHelper {
         return { encryptedData: encrypted, iv: iv.toString('hex'), authTag, hash: this.hashKey(text) };
     }
     
-    decrypt = ({ encryptedData, iv, authTag }) => {
+    static decrypt = ({ encryptedData, iv, authTag }) => {
         const decipher = crypto.createDecipheriv(algorithm, key, Buffer.from(iv, 'hex'));
         decipher.setAuthTag(Buffer.from(authTag, 'hex'));
     
@@ -24,15 +24,13 @@ class CyrptoHelper {
         return decrypted;
     }
 
-    generateHashedKey = _ => {
+    static generateHashedKey = _ => {
         const key = crypto.randomBytes(64).toString('hex')
         return { hash: this.hashKey(key), key};
     }
 
-    hashKey = (key) => crypto
+    static hashKey = (key) => crypto
         .createHmac('sha256', process.env.HASH_SECRET)
         .update(key)
         .digest('hex');
 }
-
-export default new CyrptoHelper();
