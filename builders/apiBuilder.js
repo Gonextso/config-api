@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import ErrorController from '../controllers/ErrorController.js';
 import healthRouter  from '../routes/health.js' ;
+import shopifyAuthRouter from '../routes/shopify/auth.js';
 import RequestMiddleware from '../middlewares/RequestMiddleware.js';
 import LogHelper from '../helpers/LogHelper.js';
 
@@ -42,6 +43,7 @@ app.use((_, res, next) => {
 app.use(RequestMiddleware.setTraceId);
 
 app.use(`${routePrefix}/health`, healthRouter);
+app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
 
 app.use('/', ErrorController.notFound);
 app.use(ErrorController.internalServerError);
