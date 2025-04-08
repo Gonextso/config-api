@@ -1,7 +1,7 @@
 import CoreController from "../core/CoreControler.js";
 import Company from "../models/db/Company.js";
 import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
-import CyrptoHelper from "../helpers/CyrptoHelper.js"
+import CryptoHelper from "../helpers/CryptoHelper.js"
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 
 export default new class ShopifyAuthController extends CoreController {
@@ -39,11 +39,11 @@ export default new class ShopifyAuthController extends CoreController {
                     shopifyShopId: shopifyShopInfo.id,
                     shopOwnerEmail: shopifyShopInfo.owner.email,
                     plan: shopifyShopInfo.plan.name,
-                    apiKey: CyrptoHelper.encrypt(shopifyAccessToken)
+                    apiKey: CryptoHelper.encrypt(shopifyAccessToken)
                 }
             });
 
-            const { hash, key } = CyrptoHelper.generateHashedKey();
+            const { hash, key } = CryptoHelper.generateHashedKey();
 
             company.apiKey = hash;
 

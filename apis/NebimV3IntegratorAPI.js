@@ -1,8 +1,8 @@
-import BaseAPI from "../base/BaseAPI.js";
+import CoreAPI from "../core/CoreAPI.js";
 import NebimCache from "../cache/NebimCache.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 
-export default class NebimV3IntegratorAPI extends BaseAPI {
+export default class NebimV3IntegratorAPI extends CoreAPI {
     constructor(config) {
         super(); 
         this.config = config;

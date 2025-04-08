@@ -3,7 +3,7 @@ import crypto from 'crypto';
 const algorithm = 'aes-256-gcm';
 const key = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
-export default class CyrptoHelper {
+export default class CryptoHelper {
     static encrypt = (text) => {
         const iv = crypto.randomBytes(16); 
         const cipher = crypto.createCipheriv(algorithm, key, iv);
