@@ -5,7 +5,10 @@ import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import ErrorController from '../controllers/ErrorController.js';
 import healthRouter  from '../routes/health.js' ;
+import shopifyAuthRouter from '../routes/shopify/auth.js';
+import adminRouter  from '../routes/admin.js' ;
 import RequestMiddleware from '../middlewares/RequestMiddleware.js';
+import AuthMiddleware from '../middlewares/AuthMiddleware.js';
 import LogHelper from '../helpers/LogHelper.js';
 
 LogHelper.info2('Building Express API started');
@@ -42,6 +45,8 @@ app.use((_, res, next) => {
 app.use(RequestMiddleware.setTraceId);
 
 app.use(`${routePrefix}/health`, healthRouter);
+app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
+app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
 
 app.use('/', ErrorController.notFound);
 app.use(ErrorController.internalServerError);

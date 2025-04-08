@@ -1,5 +1,6 @@
 import namespace from "../helpers/CLSHelper.js";
-import StringHelper from "../../config-api/helpers/StringHelper.js";
+import StringHelper from "../helpers/StringHelper.js";
+
 
 export default new class LogMiddleware {
     setTraceId = async (req, res, next) => {
