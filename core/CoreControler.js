@@ -28,7 +28,7 @@ export default class CoreController extends CoreClass {
                     ...baseResponse,
                     error: {
                         message: error.message,
-                        stack: error.stack
+                        stack: ['dev', 'local'].some(x => process.env.ENV?.toLowerCase() === x) ? error.stack : undefined
                     },
                     content: (content ?? {})
                 }
