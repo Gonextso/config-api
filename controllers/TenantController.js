@@ -12,13 +12,6 @@ export default new class TenantController extends CoreController {
     getTenant = async (req, res) => { 
         const tenant = await Tenant.findById(req.tenant._id);
 
-        if (!tenant) {
-            return this.response(res, {
-                info: "Tenant not found",
-                status: HttpStatusCodes.NOT_FOUND
-            });
-        }
-
         return this.response(res, {
             content: tenant,
             status: HttpStatusCodes.SUCCESS
@@ -29,12 +22,8 @@ export default new class TenantController extends CoreController {
         const updateData = req.body;
         const tenant = await Tenant.findById(req.tenant._id);
 
-        if (!tenant) {
-            return this.response(res, {
-                info: "Tenant not found",
-                status: HttpStatusCodes.NOT_FOUND
-            });
-        }
+        if (updateData.shopify && updateData.shopify.apiKey) delete updateData.shopify.apiKey;
+        if (updateData.nebim && updateData.nebim.password) delete updateData.nebim.password;
 
         ObjectHelper.deepMerge(tenant, updateData);
 
