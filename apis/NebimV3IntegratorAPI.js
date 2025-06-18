@@ -3,10 +3,9 @@ import NebimCache from "../cache/NebimCache.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 
 export default class NebimV3IntegratorAPI extends CoreAPI {
-    constructor(config) {
-        super(); 
-        this.config = config;
-        this.cache = new NebimCache(config.name);
+    constructor(tenant) {
+        super(tenant);
+        this.cache = new NebimCache(tenant);
     }
 
     connectionProvider = async exec => {
@@ -14,10 +13,10 @@ export default class NebimV3IntegratorAPI extends CoreAPI {
         let tokenData = await this.cache.get("Token");
 
         if(!tokenData || tokenData.expiryDate < Date.now()) {
-            response = await this.webRequest.post(`${this.config.nebim.host}/IntegratorService/Connect`, {
-                UserGroupCode: this.config.nebim.userGroup,
-                UserName: this.config.nebim.user,
-                Password: this.config.nebim.password,
+            response = await this.httpRequest.post(`${this.tenant.nebim.host}/IntegratorService/Connect`, {
+                UserGroupCode: this.tenant.nebim.userGroup,
+                UserName: this.tenant.nebim.user,
+                Password: this.tenant.nebim.password,
                 Validate: true
             });
 
@@ -38,13 +37,13 @@ export default class NebimV3IntegratorAPI extends CoreAPI {
             "Content-Type": "application/json"
         });
 
-        if (data["StatusCode"] >= HttpStatusCodes.BAD_REQUEST) this.throws(data["ExceptionMessage"]);
+        if (data["StatusCode"] >= HttpStatusCodes.BAD_REQUEST.code) this.throws(data["ExceptionMessage"]);
 
         return data;
     }
 
     runProc = async (procName, parameters) => await this.connectionProvider(async headers => {
-        const response = await this.webRequest.post(`${this.config.nebim.host}/IntegratorService/RunProc`, {
+        const response = await this.httpRequest.post(`${this.tenant.nebim.host}/IntegratorService/RunProc`, {
             "ProcName": procName,
             ...parameters
         }, {
@@ -55,7 +54,7 @@ export default class NebimV3IntegratorAPI extends CoreAPI {
     })
 
     runProcReturnSingle = async (procName, parameters) => await this.connectionProvider(async headers => {
-        const response = await this.webRequest.post(`${this.config.nebim.host}/IntegratorService/RunProcReturnSingle`, {
+        const response = await this.httpRequest.post(`${this.tenant.nebim.host}/IntegratorService/RunProcReturnSingle`, {
             "ProcName": procName,
             ...parameters
         }, {
@@ -75,7 +74,7 @@ export default class NebimV3IntegratorAPI extends CoreAPI {
                 break;
         }
 
-        const response = await this.webRequest.post(`${this.config.nebim.host}/IntegratorService/GetModel`, dictionary, {
+        const response = await this.httpRequest.post(`${this.tenant.nebim.host}/IntegratorService/GetModel`, dictionary, {
             headers: headers
         });
 
@@ -83,7 +82,7 @@ export default class NebimV3IntegratorAPI extends CoreAPI {
     })
 
     post = async (data, customHeaders = {}) => await this.connectionProvider(async headers => {
-        const response = await this.webRequest.post(`${this.config.nebim.host}/IntegratorService/Post`, data, {
+        const response = await this.httpRequest.post(`${this.tenant.nebim.host}/IntegratorService/Post`, data, {
             headers: {
                 ...customHeaders,
                 ...headers

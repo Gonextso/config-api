@@ -1,7 +1,14 @@
 import chalk from "chalk";
 import LogHelper from "../helpers/LogHelper.js";
+import CLSHelper from "../helpers/CLSHelper.js";
 
 export default class CoreClass {
+    constructor(tenant) {
+        this.tenant = tenant;
+        this.logger = new LogHelper(tenant);
+        this.traceId = CLSHelper.get('traceId');
+    }
+    
     throws = (message) => {
         throw new Error(message);
     }
@@ -12,5 +19,5 @@ export default class CoreClass {
         process.exit(1);
     }
 
-    logger = LogHelper
+    logger = null;
 }

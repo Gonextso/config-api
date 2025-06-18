@@ -1,5 +1,5 @@
 import CoreController from "../core/CoreControler.js";
-import Company from "../models/db/Company.js";
+import Tenant from "../models/db/Tenant.js";
 import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
 import CryptoHelper from "../helpers/CryptoHelper.js"
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
@@ -7,11 +7,11 @@ import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 export default new class ShopifyAuthController extends CoreController {
     constructor() {
         super();
-        this.api = new ShopifyGqlAPI();
     }
 
     callback = async (req, res) => {
         const { code, shop } = req.query;
+        const api = new ShopifyGqlAPI(req.tenant);
 
         if (!code || !shop) return this.response(res, 
             { 
@@ -19,18 +19,18 @@ export default new class ShopifyAuthController extends CoreController {
                 status: HttpStatusCodes.BAD_REQUEST 
             });
 
-        const shopifyAccessToken = await this.api.getAccessToken(shop, code);
-        const shopifyShopInfo = await this.api.getShopInfo(shop, shopifyAccessToken);
+        const shopifyAccessToken = await api.getAccessToken(shop, code);
+        const shopifyShopInfo = await api.getShopInfo(shop, shopifyAccessToken);
 
-        let company = Company.findOne({ 'shopify.domain': shopifyShopInfo.domain });
+        let tenant = await Tenant.findOne({ 'shopify.domain': shopifyShopInfo.domain });
 
-        if (company) {
-            this.logger.info2(`${company.name} will be updated`);
+        if (tenant) {
+            this.logger.info2(`${tenant.name} will be updated`);
             //TODO: implement update logic
         } else {
             this.logger.info2(`${shopifyShopInfo.name} will be created`);
 
-            company = new Company({
+            tenant = new Tenant({
                 name: shopifyShopInfo.name,
                 salesUrl: shopifyShopInfo.myshopifyDomain,
                 shopify: {
@@ -45,9 +45,9 @@ export default new class ShopifyAuthController extends CoreController {
 
             const { hash, key } = CryptoHelper.generateHashedKey();
 
-            company.apiKey = hash;
+            tenant.apiKey = hash;
 
-            await company.save();
+            await tenant.save();
 
             res.cookie("api_key", key, {
                 httpOnly: true,

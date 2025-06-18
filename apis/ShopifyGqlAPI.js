@@ -1,19 +1,19 @@
 import CoreAPI from "../core/CoreAPI.js";
 
 export default class ShopifyGqlAPI extends CoreAPI {
-    constructor(config) {
-        super();
-        this.config = config;
+    constructor(tenant) {
+        super(tenant);
+        this.config = tenant.shopify;
     }
 
-    query = async (query, variables) => {  
-        const response = await this.httpRequest.gpost(`https://${this.config.shopify.shopName}.myshopify.com/admin/api/${process.env.SHOPIFY_API_VERSION}/graphql.json`, {
+    query = async (query, variables) => {
+        const response = await this.httpRequest.gpost(`https://${this.config.name}.myshopify.com/admin/api/${process.env.SHOPIFY_API_VERSION}/graphql.json`, {
             query,
             variables
         }, {
             headers: {
                 'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': this.config.shopify.decyrptedApiKey
+                'X-Shopify-Access-Token': this.config.decyrptedApiKey
             }
         });
 

@@ -11,7 +11,9 @@ import RequestMiddleware from '../middlewares/RequestMiddleware.js';
 import AuthMiddleware from '../middlewares/AuthMiddleware.js';
 import LogHelper from '../helpers/LogHelper.js';
 
-LogHelper.info2('Building Express API started');
+let logger = new LogHelper();
+
+logger.info2('Building Express API started');
 
 const app = express();
 const routePrefix = `/rest/${process.env.API_TYPE}/${process.env.VERSION}`;
@@ -20,7 +22,9 @@ app.use(helmet());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(morgan(function (tokens, req, res) {
-    return LogHelper.request([
+    if (req.tenant) logger = new LogHelper(req.tenant);
+
+    return logger.request([
         `${tokens['remote-addr'](req, res)} - ${tokens['remote-user'](req, res) ?? "no_user"}`,
         `[${new Date(tokens.date(req, res)).toISOString()}]`,
         `"${tokens.method(req, res)}`,
@@ -55,6 +59,6 @@ if (!process.env.PORT) process.exit(1); //TODO: add log
 
 app.listen(process.env.PORT); 
 
-LogHelper.info4(`Listening on port ${process.env.PORT} for environment '${process.env.ENV ? process.env.ENV : "PROD"}'. API type: ${process.env.API_TYPE} - Version: ${process.env.VERSION}`);
+logger.info4(`Listening on port ${process.env.PORT} for environment '${process.env.ENV ? process.env.ENV : "PROD"}'. API type: ${process.env.API_TYPE} - Version: ${process.env.VERSION}`);
 
 

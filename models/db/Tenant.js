@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export default mongoose.model('Company', new mongoose.Schema({
+export default mongoose.model('Tenant', new mongoose.Schema({
     name: { type: String, required: true },
     apiKey: { type: String, unique: true, required: true, select: false  },
     salesUrl: String,
@@ -17,19 +17,20 @@ export default mongoose.model('Company', new mongoose.Schema({
         shopifyShopId: { type: String, unique: true, index: true },
         shopOwnerEmail: String,
         plan: String,
+        isInventoryTracking: { type: Boolean, default: true },
         isActive: { type: Boolean, default: true }
     },
     nebim: {
         host: String,
         user: String,
         userGroup: String,
-        password: String,
+        password: String, //TODO: make encyrption
         product: {
             categoryKeysFrom: { type: [String], default: [] }
         },
         customer: {
-            phoneType: Number,
-            addressType: Number
+            phoneType: String,
+            addressType: String
         },
         order: {
             deliveryCompany: String,
@@ -37,7 +38,8 @@ export default mongoose.model('Company', new mongoose.Schema({
             creditCardType: String,
             office: String,
             store: String,
-            warehouse: String
+            warehouse: String,
+            cancelReason: String
         },
         procNames: {
             product: {
@@ -55,4 +57,5 @@ export default mongoose.model('Company', new mongoose.Schema({
         isActive: { type: Boolean, default: true },
     },
     isActive: { type: Boolean, default: true },
+    isTestStore: { type: Boolean, default: false }
 }));

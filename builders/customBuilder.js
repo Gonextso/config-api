@@ -4,7 +4,9 @@ import fs from 'fs';
 import LogHelper from "../helpers/LogHelper.js";
 import config from '../app.config.js';
 
-LogHelper.info2('Building custom utilities started');
+let logger = new LogHelper();
+
+logger.info2('Building custom utilities started');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +17,7 @@ for (const relPath of config.additionalBuilders) {
     if (fs.existsSync(fullPath)) {
       await import(fullPath);
     } else {
-      LogHelper.warn(`Builder not found at path: ${relPath}, skipping the builder.`);
+      logger.warn(`Builder not found at path: ${relPath}, skipping the builder.`);
     }
   }
 
