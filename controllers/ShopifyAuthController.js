@@ -7,11 +7,11 @@ import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 export default new class ShopifyAuthController extends CoreController {
     constructor() {
         super();
+        this.api = new ShopifyGqlAPI();
     }
 
     callback = async (req, res) => {
         const { code, shop } = req.query;
-        const api = new ShopifyGqlAPI(req.tenant);
 
         if (!code || !shop) return this.response(res, 
             { 
@@ -19,10 +19,10 @@ export default new class ShopifyAuthController extends CoreController {
                 status: HttpStatusCodes.BAD_REQUEST 
             });
 
-        const shopifyAccessToken = await api.getAccessToken(shop, code);
-        const shopifyShopInfo = await api.getShopInfo(shop, shopifyAccessToken);
+        const shopifyAccessToken = await this.api.getAccessToken(shop, code);
+        const shopifyShopInfo = await this.api.getShopInfo(shop, shopifyAccessToken);
 
-        let tenant = await Tenant.findOne({ 'shopify.domain': shopifyShopInfo.domain });
+        let tenant = Tenant.findOne({ 'shopify.domain': shopifyShopInfo.domain });
 
         if (tenant) {
             this.logger.info2(`${tenant.name} will be updated`);

@@ -3,7 +3,7 @@ import CoreAPI from "../core/CoreAPI.js";
 export default class ShopifyGqlAPI extends CoreAPI {
     constructor(tenant) {
         super(tenant);
-        this.config = tenant.shopify;
+        this.config = tenant?.shopify;
     }
 
     query = async (query, variables) => {

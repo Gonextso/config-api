@@ -18,6 +18,19 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         shopOwnerEmail: String,
         plan: String,
         isInventoryTracking: { type: Boolean, default: true },
+        schedules: {
+            product: {
+                inventory: { type: String, default: "0 * * * *" }, 
+                details: { type: String, default: "0 0 * * *" }
+            },
+            order: {
+                create_and_cancel: { type: String, default: "*/30 * * * *" }
+            },
+            redention: {
+                logs: { type: String, default: "0 0 * * 7" } 
+            }
+        },
+        isEnterprise: { type: Boolean, default: false },
         isActive: { type: Boolean, default: true }
     },
     nebim: {
