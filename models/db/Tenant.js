@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import moment from "moment";
 
 export default mongoose.model('Tenant', new mongoose.Schema({
     name: { type: String, required: true },
@@ -19,15 +20,52 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         plan: String,
         isInventoryTracking: { type: Boolean, default: true },
         schedules: {
+            isActive: { type: Boolean, default: false },
             product: {
-                inventory: { type: String, default: "0 * * * *" }, 
-                details: { type: String, default: "0 0 * * *" }
+                inventory: {
+                    interval: { type: String, default: "0 * * * *" },
+                    startDate: { 
+                        type: String, 
+                        default: function() {
+                            const interval = moment.duration(1, "hours")
+                            return moment().subtract(interval).toISOString();
+                        }
+                    }
+                },
+                details: {
+                    interval: { type: String, default: "0 0 * * *" },
+                    startDate: { 
+                        type: String, 
+                        default: function() {
+                            const interval = moment.duration(1, "days");
+                            return moment().subtract(interval).toISOString();
+                        }
+                    }
+                }
             },
             order: {
-                create_and_cancel: { type: String, default: "*/30 * * * *" }
+                create_and_cancel: {
+                    interval: { type: String, default: "*/30 * * * *" },
+                    startDate: { 
+                        type: String, 
+                        default: function() {
+                            const interval = moment.duration(30, "minutes");
+                            return moment().subtract(interval).toISOString();
+                        }
+                    }
+                },
             },
             redention: {
-                logs: { type: String, default: "0 0 * * 7" } 
+                logs: {
+                    interval: { type: String, default: "0 0 * * 7" },
+                    startDate: { 
+                        type: String, 
+                        default: function() {
+                            const interval = moment.duration(7, "days"); 
+                            return moment().subtract(interval).toISOString();
+                        }
+                    }
+                }
             }
         },
         isEnterprise: { type: Boolean, default: false },
@@ -72,3 +110,5 @@ export default mongoose.model('Tenant', new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     isTestStore: { type: Boolean, default: false }
 }));
+
+//TODO: makesure startdate validation is done in the business logic
