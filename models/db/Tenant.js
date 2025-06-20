@@ -13,7 +13,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             authTag: { type: String, select: false  }
         },
         name: String,
-        decyrptedApiKey: String, //* This field using for data transfer. Db does not contain decryptedApiKey.
+        decryptedApiKey: String, //* This field using for data transfer. Db does not contain decryptedApiKey.
         domain: { type: String, unique: true, index: true },
         shopifyShopId: { type: String, unique: true, index: true },
         shopOwnerEmail: String,

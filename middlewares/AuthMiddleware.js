@@ -1,7 +1,9 @@
 import CoreController from "../core/CoreControler.js";
 import CryptoHelper from "../helpers/CryptoHelper.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
+import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
 import Tenant from "../models/db/Tenant.js";
+import ShopifyStoreBusiness from "../business/shopify/StoreBusiness.js";
 
 export default new class AuthMiddleware extends CoreController {
     constructor() {
@@ -25,15 +27,15 @@ export default new class AuthMiddleware extends CoreController {
             .select('+shopify.apiKey.iv')
             .select('+shopify.apiKey.authTag');
 
-        if (!company) {
+        if (!tenant) {
             return this.response(res, {
                 status: HttpStatusCodes.UNAUTHORIZED,
                 info: "Unauthorized access"
             })
         }
 
-        req.tenant = company;
-        req.tenant.shopify.decyrptedApiKey = CryptoHelper.decrypt(tenant.shopify.apiKey);
+        req.tenant = tenant;
+        req.tenant.shopify.decryptedApiKey = CryptoHelper.decrypt(tenant.shopify.apiKey);
 
         const shopifyAccessService = new ShopifyStoreBusiness(new ShopifyGqlAPI(req.tenant));
 

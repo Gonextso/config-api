@@ -53,7 +53,7 @@ app.use(RequestMiddleware.setTraceId);
 app.use(`${routePrefix}/health`, healthRouter);
 app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
 app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
-app.use(`${routePrefix}/tenant`, ConfigMiddleware.setConfigViaTenantId, configRouter);
+app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, configRouter);
 
 app.use('/', ErrorController.notFound);
 app.use(ErrorController.internalServerError);
