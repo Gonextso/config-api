@@ -1,6 +1,7 @@
 import CoreController from "../core/CoreControler.js";
 import axios from "axios";
 import http from 'http';
+import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 
 const agent = new http.Agent({ keepAlive: false });
 
@@ -14,11 +15,12 @@ export default new class ProxyController extends CoreController {
             const path = Array.isArray(req.params.splat) ? req.params.splat.join('/') : (req.params.splat || '');
             const url = `${process.env.INTEGRATION_API_HOST}/${path}`;
             const ALLOWED_PATHS = [
-                'nebim/check'
+                'nebim/check',
+                'shopify/nebim/order/sync_failed'
             ];
 
             if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.startsWith(allowedPath))) {
-                return res.status(403).json({ error: true, message: 'Forbidden path' });
+                return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED, info: 'Forbidden path'});
             }
 
             const method = req.method.toLowerCase();
