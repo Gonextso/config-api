@@ -20,39 +20,43 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         plan: String,
         isInventoryTracking: { type: Boolean, default: true },
         schedules: {
-            isActive: { type: Boolean, default: false },
-            product: {
-                inventory: {
-                    interval: { type: String, default: "0 * * * *" },
-                    startDate: { 
-                        type: String, 
-                        default: function() {
-                            const interval = moment.duration(1, "hours")
-                            return moment().subtract(interval).toISOString();
-                        }
+            nebim: {
+                product: {
+                    inventory: {
+                        interval: { type: String, default: "0 * * * *" },
+                        startDate: { 
+                            type: String, 
+                            default: function() {
+                                const interval = moment.duration(1, "hours")
+                                return moment().subtract(interval).toISOString();
+                            }
+                        },
+                        isActive: { type: Boolean, default: false }
+                    },
+                    details: {
+                        interval: { type: String, default: "0 0 * * *" },
+                        startDate: { 
+                            type: String, 
+                            default: function() {
+                                const interval = moment.duration(1, "days");
+                                return moment().subtract(interval).toISOString();
+                            }
+                        },
+                        isActive: { type: Boolean, default: false }
                     }
                 },
-                details: {
-                    interval: { type: String, default: "0 0 * * *" },
-                    startDate: { 
-                        type: String, 
-                        default: function() {
-                            const interval = moment.duration(1, "days");
-                            return moment().subtract(interval).toISOString();
-                        }
-                    }
-                }
-            },
-            order: {
-                create_and_cancel: {
-                    interval: { type: String, default: "*/30 * * * *" },
-                    startDate: { 
-                        type: String, 
-                        default: function() {
-                            const interval = moment.duration(30, "minutes");
-                            return moment().subtract(interval).toISOString();
-                        }
-                    }
+                order: {
+                    create_and_cancel: {
+                        interval: { type: String, default: "*/30 * * * *" },
+                        startDate: { 
+                            type: String, 
+                            default: function() {
+                                const interval = moment.duration(30, "minutes");
+                                return moment().subtract(interval).toISOString();
+                            }
+                        },
+                        isActive: { type: Boolean, default: false }
+                    },
                 },
             },
             redention: {
@@ -64,7 +68,8 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                             const interval = moment.duration(7, "days"); 
                             return moment().subtract(interval).toISOString();
                         }
-                    }
+                    },
+                    isActive: { type: Boolean, default: true, readOnly: true }
                 }
             }
         },
