@@ -60,7 +60,7 @@ app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRout
 app.use('/', ErrorController.notFound);
 app.use(ErrorController.internalServerError);
 
-if (!process.env.PORT) process.exit(1); //TODO: add log
+if (!process.env.PORT) process.exit(1);
 
 app.listen(process.env.PORT); 
 
