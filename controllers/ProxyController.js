@@ -42,7 +42,7 @@ export default new class ProxyController extends CoreController {
                 data: req.body,
                 params: req.query,
             };
-            console.log('Proxying request:', axiosConfig);
+            
             const response = await axios(axiosConfig);
             return res.status(response.status).json(response.data);
         } catch (error) {

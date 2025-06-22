@@ -23,7 +23,9 @@ export default new class TenantController extends CoreController {
         const tenant = await Tenant.findById(req.tenant._id);
 
         if (updateData.shopify && updateData.shopify.apiKey) delete updateData.shopify.apiKey;
-        if (updateData.nebim && updateData.nebim.password) delete updateData.nebim.password;
+        if (updateData.nebim && updateData.nebim.password) {
+            tenant.nebim.password = CryptoHelper.encrypt(updateData.nebim.password);
+        }
 
         ObjectHelper.deepMerge(tenant, updateData);
 

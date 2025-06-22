@@ -19,6 +19,13 @@ export default new class AdminController extends CoreController {
                 ...apiKey, 
             }
         }
+
+        if (req.body.nebim && req.body.nebim.password) {
+            const password = CyrptoHelper.encrypt(req.body.nebim.password);
+            req.body.nebim.password = {
+                ...password, 
+            }
+        }
         const tenant = new Tenant(req.body);
         const { hash, key } = CyrptoHelper.generateHashedKey();
 

@@ -3,14 +3,14 @@ import moment from "moment";
 
 export default mongoose.model('Tenant', new mongoose.Schema({
     name: { type: String, required: true },
-    apiKey: { type: String, unique: true, required: true, select: false  },
+    apiKey: { type: String, unique: true, required: true, select: false },
     salesUrl: String,
     shopify: {
         apiKey: {
-            hash: { type: String, select: false  },
-            encryptedData: { type: String, select: false  },
-            iv: { type: String, select: false  },
-            authTag: { type: String, select: false  }
+            hash: { type: String, select: false },
+            encryptedData: { type: String, select: false },
+            iv: { type: String, select: false },
+            authTag: { type: String, select: false }
         },
         name: String,
         decryptedApiKey: String, //* This field using for data transfer. Db does not contain decryptedApiKey.
@@ -24,9 +24,9 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                 product: {
                     inventory: {
                         interval: { type: String, default: "0 * * * *" },
-                        startDate: { 
-                            type: String, 
-                            default: function() {
+                        startDate: {
+                            type: String,
+                            default: function () {
                                 const interval = moment.duration(1, "hours")
                                 return moment().subtract(interval).toISOString();
                             }
@@ -35,9 +35,9 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                     },
                     details: {
                         interval: { type: String, default: "0 0 * * *" },
-                        startDate: { 
-                            type: String, 
-                            default: function() {
+                        startDate: {
+                            type: String,
+                            default: function () {
                                 const interval = moment.duration(1, "days");
                                 return moment().subtract(interval).toISOString();
                             }
@@ -48,9 +48,9 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                 order: {
                     create_and_cancel: {
                         interval: { type: String, default: "*/30 * * * *" },
-                        startDate: { 
-                            type: String, 
-                            default: function() {
+                        startDate: {
+                            type: String,
+                            default: function () {
                                 const interval = moment.duration(30, "minutes");
                                 return moment().subtract(interval).toISOString();
                             }
@@ -62,10 +62,10 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             redention: {
                 logs: {
                     interval: { type: String, default: "0 0 * * 7" },
-                    startDate: { 
-                        type: String, 
-                        default: function() {
-                            const interval = moment.duration(7, "days"); 
+                    startDate: {
+                        type: String,
+                        default: function () {
+                            const interval = moment.duration(7, "days");
                             return moment().subtract(interval).toISOString();
                         }
                     },
@@ -80,7 +80,12 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         host: String,
         user: String,
         userGroup: String,
-        password: String, //TODO: make encyrption
+        password: {
+            hash: { type: String, select: false },
+            encryptedData: { type: String, select: false },
+            iv: { type: String, select: false },
+            authTag: { type: String, select: false }
+        },
         product: {
             categoryKeysFrom: { type: [String], default: [] }
         },

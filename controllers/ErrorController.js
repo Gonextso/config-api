@@ -7,7 +7,6 @@ export default new class ErrorController extends CoreController {
     }
 
     notFound = async (req, res) => {
-        console.log(req.url)
         return this.response(res, { status: HttpStatusCodes.NOT_FOUND, info: `Requested url: ${req.url} not found` });
     }
     internalServerError = async (error, req, res, next) => {
