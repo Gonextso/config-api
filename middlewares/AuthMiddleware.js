@@ -4,6 +4,7 @@ import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
 import Tenant from "../models/db/Tenant.js";
 import ShopifyStoreBusiness from "../business/shopify/StoreBusiness.js";
+import { isAxiosError } from "axios";
 
 export default new class AuthMiddleware extends CoreController {
     constructor() {
