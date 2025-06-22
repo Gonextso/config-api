@@ -19,7 +19,7 @@ export default new class ProxyController extends CoreController {
                 'shopify/nebim/order/sync_failed'
             ];
 
-            if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.startsWith(allowedPath))) {
+            if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.toLocaleLowerCase() === allowedPath)) {
                 return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED, info: 'Forbidden path'});
             }
 
