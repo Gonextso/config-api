@@ -8,6 +8,7 @@ import healthRouter  from '../routes/health.js' ;
 import shopifyAuthRouter from '../routes/shopify/auth.js';
 import adminRouter  from '../routes/admin.js';
 import configRouter from '../routes/config.js';
+import proxyRouter from '../routes/proxy.js';
 import RequestMiddleware from '../middlewares/RequestMiddleware.js';
 import AuthMiddleware from '../middlewares/AuthMiddleware.js';
 import LogHelper from '../helpers/LogHelper.js';
@@ -54,6 +55,7 @@ app.use(`${routePrefix}/health`, healthRouter);
 app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
 app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
 app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, configRouter);
+app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
 app.use('/', ErrorController.notFound);
 app.use(ErrorController.internalServerError);

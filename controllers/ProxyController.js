@@ -1,0 +1,52 @@
+import CoreController from "../core/CoreControler.js";
+import axios from "axios";
+import http from 'http';
+
+const agent = new http.Agent({ keepAlive: false });
+
+export default new class ProxyController extends CoreController {
+    constructor() {
+        super();
+    }
+
+    proxyToIntegration = async (req, res) => {
+        try {
+            const path = Array.isArray(req.params.splat) ? req.params.splat.join('/') : (req.params.splat || '');
+            const url = `${process.env.INTEGRATION_API_HOST}/${path}`;
+            const ALLOWED_PATHS = [
+                'nebim/check'
+            ];
+
+            if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.startsWith(allowedPath))) {
+                return res.status(403).json({ error: true, message: 'Forbidden path' });
+            }
+
+            const method = req.method.toLowerCase();
+
+            const { host, connection, 'content-length': contentLength, 'transfer-encoding': transferEncoding, ...inboundHeaders } = req.headers;
+
+            const axiosConfig = {
+                method,
+                url,
+                headers: {
+                    ...inboundHeaders,
+                    'Content-Type': 'application/json',
+                    'X-Proxied-By': 'config-api',
+                    'X-Forwarded-For': req.ip,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Original-Path': req.originalUrl,
+                },
+                httpAgent: agent,
+                data: req.body,
+                params: req.query,
+            };
+            console.log('Proxying request:', axiosConfig);
+            const response = await axios(axiosConfig);
+            return res.status(response.status).json(response.data);
+        } catch (error) {
+            const status = error.response?.status || 500;
+            const message = error.response?.data || error.message;
+            return res.status(status).json(message);
+        }
+    };
+}
