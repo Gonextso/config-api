@@ -90,12 +90,12 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             categoryKeysFrom: { type: [String], default: [] }
         },
         customer: {
-            phoneType: String,
-            addressType: String
+            phoneType: { type: String, default: "7" },
+            addressType: { type: String, default: "1" }
         },
         order: {
             deliveryCompany: String,
-            posTerminalId: Number,
+            posTerminalId: { type: Number, default: 1 },
             creditCardType: String,
             office: String,
             store: String,
@@ -104,15 +104,15 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         },
         procNames: {
             product: {
-                details: String,
-                inventory: String,
-                price: String
+                details: { type: String, default: "sp_INV_GetProductDetails" },
+                inventory: { type: String, default: "sp_INV_GetProductPrice" },
+                price: { type: String, default: "sp_INV_GetProductInventory" },
             },
             customer: {
-                check: String
+                check: { type: String, default: "qry_B2C_GetCustomer" },
             },
             defaults: {
-                addressCodes: String
+                addressCodes: { type: String, default: "sp_INV_GetAddressList" },
             }
         },
         isActive: { type: Boolean, default: true },
