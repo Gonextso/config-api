@@ -62,7 +62,7 @@ app.use(ErrorController.internalServerError);
 
 if (!process.env.PORT) process.exit(1);
 
-app.listen(process.env.PORT); 
+app.listen(process.env.PORT, '::'); 
 
 logger.info4(`Listening on port ${process.env.PORT} for environment '${process.env.ENV ? process.env.ENV : "PROD"}'. API type: ${process.env.API_TYPE} - Version: ${process.env.VERSION}`);
 
