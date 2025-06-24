@@ -34,14 +34,21 @@ export default class ShopifyGqlAPI extends CoreAPI {
         return response.data.shop;
     }
 
-    getAccessToken = async (shop, code) => {
+    getAccessToken = async (shop, idToken) => {
         const accessTokenPayload = {
             client_id: process.env.SHOPIFY_CLIENT_ID,
             client_secret: process.env.SHOPIFY_CLIENT_SECRET,
-            code,
+            grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+            subject_token: idToken,
+            subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+            requested_token_type: "urn:shopify:params:oauth:token-type:online-access-token"
         };
 
-        const response = await this.httpRequest.post(`https://${shop}/admin/oauth/access_token`, accessTokenPayload);
+        const response = await this.httpRequest.post(`https://${shop}.myshopify.com/admin/oauth/access_token`, accessTokenPayload, {
+            headers: {
+                'Content-Type': "application/json"
+            }
+        });
 
         return response.data.access_token;
     }

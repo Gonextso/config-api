@@ -13,18 +13,14 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     initializeTenant = async (req, res) => {
-        const saltApiKey = req.headers['x-api-key'] ?? "";
+        const idToken = req.headers['x-api-key'] ?? "";
+        const newTenant = req.body;
 
-        if (!saltApiKey) {
+        if (!idToken) {
             return this.response(res, {
-                status: HttpStatusCodes.UNAUTHORIZED,
-                info: "Missing API key in request headers"
+                status: HttpStatusCodes.UNAUTHORIZED
             });
         }
-
-        const apiKey = CryptoHelper.hashKey(saltApiKey);
-        const newTenant = req.body;
-        let shop = null;
 
         if (!newTenant || !newTenant.name) {
             return this.response(res, {
@@ -32,6 +28,25 @@ export default new class ShopifyAuthController extends CoreController {
                 info: "Missing tenant info in request body"
             });
         }
+
+        let saltApiKey = null;
+        let shop = null;
+
+        try {
+            saltApiKey = await this.api.getAccessToken(newTenant.name, idToken);
+        } catch (error) {
+            return this.response(res, {
+                status: HttpStatusCodes.UNAUTHORIZED
+            });
+        }
+
+        if (!saltApiKey) {
+            return this.response(res, {
+                status: HttpStatusCodes.UNAUTHORIZED
+            });
+        }
+
+        const apiKey = CryptoHelper.hashKey(saltApiKey);
 
         newTenant.shopify = {}
         newTenant.shopify.decryptedApiKey = saltApiKey;
