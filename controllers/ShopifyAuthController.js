@@ -14,7 +14,7 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     initializeTenant = async (req, res) => {
-        let result = { isSuccess: true, info: "", status: HttpStatusCodes.CREATED, tenant: null };
+        let result = { isSuccess: false, info: "", status: HttpStatusCodes.CONFLICT, content: null };
         const idToken = req.headers['x-api-key'] ?? "";
         
         const work = async _ => {
@@ -105,7 +105,7 @@ export default new class ShopifyAuthController extends CoreController {
     
             await tenant.save();
 
-            return { ...result, info: "Tenant initialized successfully", tenant: tenant };
+            return { isSuccess: true, status: HttpStatusCodes.CREATED, info: "Tenant initialized successfully", content: tenant };
         }
 
         result = await SystemHelper.createTransaction({ name: "tenant_initialization" }, CryptoHelper.generateHashedKey(idToken).hash, work);
@@ -116,8 +116,11 @@ export default new class ShopifyAuthController extends CoreController {
 
         return this.response(res, {
             ...result,
-            info: "Tenant already exists",
         })
+    }
+
+    getTenant = async () => {
+        
     }
 
     deleteTenant = async (req, res) => { //TODO: remove it on prod

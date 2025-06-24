@@ -5,6 +5,7 @@ import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
 import Tenant from "../models/db/Tenant.js";
 import ShopifyStoreBusiness from "../business/shopify/StoreBusiness.js";
 import { isAxiosError } from "axios";
+import mongoose from "mongoose";
 
 export default new class AuthMiddleware extends CoreController {
     constructor() {
@@ -43,12 +44,66 @@ export default new class AuthMiddleware extends CoreController {
         try {
             await shopifyAccessService.checkStore();
         } catch (error) {
-            if(isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x.code === error.status)) return this.response(res, {
+            if (isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x.code === error.status)) return this.response(res, {
                 status: { code: error.status, message: error.message },
                 info: `Shopify API Error: ${error.response.data.errors}. Error occured while authenticating via Shopify.`
             })
         }
 
         return next();
+    }
+
+    validateIdToken = async (req, res, next) => {
+        const idToken = req.headers['x-api-key'] ?? "";
+        const tenantId = req.headers["x-tenant-id"] || req.get("x-tenant-id");
+
+        if (!tenantId) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "'x-tenant-id' header is required.",
+            });
+        }
+
+        if (!mongoose.isValidObjectId(tenantId)) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Invalid mongo object id format.",
+            });
+        }
+
+        if (!idToken) return this.response(res, {
+            status: HttpStatusCodes.UNAUTHORIZED
+        })
+
+        const tenant = await Tenant.findById(tenantId)
+            .select('+shopify.apiKey.encryptedData')
+            .select('+shopify.apiKey.iv')
+            .select('+shopify.apiKey.authTag')
+            .lean();
+
+        if (!tenant) {
+            return this.response(res, {
+                status: HttpStatusCodes.NOT_FOUND,
+                info: "Tenant not found.",
+            });
+        }
+
+        const api = new ShopifyGqlAPI(tenant);
+        let callError = null;
+
+        const access_token = await api.getAccessToken(tenant.name, idToken)
+            .catch(error => (callError =  error));
+
+        if (callError && isAxiosError(callError)) return this.response(res, {
+            status: { code: callError.status, message: callError.message },
+        })
+        else this.throws(error.message)
+
+        req.tenant = tenant;
+        req.shopify = {};
+        req.shopify.access_token = access_token;
+        req.tenant.shopify.decyrptedApiKey = CryptoHelper.decrypt(tenant.shopify.apiKey);
+
+        next();
     }
 }
