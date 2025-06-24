@@ -15,16 +15,16 @@ export default new class ShopifyAuthController extends CoreController {
 
     initializeTenant = async (req, res) => {
         let result = { isSuccess: false, info: "", status: HttpStatusCodes.CONFLICT, content: null };
-        const idToken = req.headers['x-api-key'] ?? "";
+        let accessToken = req.headers['x-api-key'] ?? "";
         
         const work = async _ => {
             const newTenant = req.body;
 
-            if (!idToken) {
-                result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
+            // if (!idToken) { //TODO: remove if id token will never used
+            //     result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
 
-                return result;
-            }
+            //     return result;
+            // }
     
             if (!newTenant || !newTenant.name) {
                 result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: "Missing tenant info in request body" };
@@ -32,32 +32,32 @@ export default new class ShopifyAuthController extends CoreController {
                 return result;
             }
     
-            let saltApiKey = null;
+            // let accessToken = null; //TODO: remove if id token will never used
             let shop = null;
     
-            try {
-                saltApiKey = await this.api.getAccessToken(newTenant.name, idToken);
-            } catch (error) {
+            // try { //TODO: remove if id token will never used
+            //     accessToken = await this.api.getAccessToken(newTenant.name, idToken);
+            // } catch (error) {
+            //     result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
+
+            //     return result;
+            // }
+    
+            if (!accessToken) {
                 result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
 
                 return result;
             }
     
-            if (!saltApiKey) {
-                result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
-
-                return result;
-            }
-    
-            const apiKey = CryptoHelper.hashKey(saltApiKey);
+            const apiKey = CryptoHelper.hashKey(accessToken);
     
             newTenant.shopify = {}
-            newTenant.shopify.decryptedApiKey = saltApiKey;
+            newTenant.shopify.decryptedApiKey = accessToken;
     
             const shopifyAccessService = new ShopifyStoreBusiness(newTenant);
     
             try {
-                shop = await shopifyAccessService.getShop(newTenant.name, saltApiKey);
+                shop = await shopifyAccessService.getShop(newTenant.name, accessToken);
             } catch (error) {
                 if (isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x.code === error.status)) {
                     result = { ...result, status: { code: error.status, message: error.message }, info: `Shopify API Error: ${error.response.data.errors}. Error occured while authenticating via Shopify.` };
@@ -96,7 +96,7 @@ export default new class ShopifyAuthController extends CoreController {
                     domain: shop.domain ?? `${newTenant.name}.myshopify.com`, //TODO: replace with actual domain
                     shopId: shop.id,
                     customerEmail: shop.customer_email,
-                    apiKey: {...CryptoHelper.encrypt(saltApiKey)}
+                    apiKey: {...CryptoHelper.encrypt(accessToken)}
                 },
                 apiKey: "UNUSED",
             }
@@ -108,7 +108,7 @@ export default new class ShopifyAuthController extends CoreController {
             return { isSuccess: true, status: HttpStatusCodes.CREATED, info: "Tenant initialized successfully", content: tenant };
         }
 
-        result = await SystemHelper.createTransaction({ name: "tenant_initialization" }, CryptoHelper.generateHashedKey(idToken).hash, work);
+        result = await SystemHelper.createTransaction({ name: "tenant_initialization" }, CryptoHelper.hashKey(idToken), work);
 
         if (result.isSuccess) return this.response(res, {
                 ...result

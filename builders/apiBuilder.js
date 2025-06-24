@@ -54,8 +54,8 @@ app.use(RequestMiddleware.setTraceId);
 app.use(`${routePrefix}/health`, healthRouter);
 app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
 app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
-app.use(`${routePrefix}/tenant`, AuthMiddleware.validateIdToken, tenantRouter);
-app.use(`${routePrefix}/proxy`, AuthMiddleware.validateIdToken, proxyRouter);
+app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, tenantRouter);
+app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
 app.use('/', ErrorController.notFound);
 app.use(ErrorController.internalServerError);
