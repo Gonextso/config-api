@@ -4,7 +4,7 @@ import moment from "moment";
 export default mongoose.model('Tenant', new mongoose.Schema({
     name: { type: String, required: true },
     apiKey: { type: String, unique: true, required: true, select: false },
-    salesUrl: String,
+    salesUrl: String, //TODO: check if this is needed, or if it can be derived from shopify.domain
     shopify: {
         apiKey: {
             hash: { type: String, select: false },
@@ -14,11 +14,26 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         },
         name: String,
         decryptedApiKey: String, //* This field using for data transfer. Db does not contain decryptedApiKey.
-        domain: { type: String, unique: true, index: true },
-        shopId: { type: String, unique: true, index: true },
-        shopifyShopId: { type: String, unique: true, index: true }, //TODO: remove this field after migration
-        shopOwnerEmail: String,
-        plan: String,
+        domain: { type: String, unique: true },
+        shopId: { type: String, unique: true },
+        customerEmail: String,
+        plan: {
+            name: { type: String, default: "Basic" },
+            isActive: { type: Boolean, default: true },
+            startDate: {
+                type: String,
+                default: function () {
+                    return moment().toISOString();
+                }
+            },
+            endDate: {
+                type: String,
+                default: function () {
+                    const interval = moment.duration(1, "months");
+                    return moment().add(interval).toISOString();
+                }
+            }
+        },
         isInventoryTracking: { type: Boolean, default: true },
         schedules: {
             nebim: {

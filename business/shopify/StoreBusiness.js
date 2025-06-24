@@ -11,4 +11,7 @@ export default class ShopifyStoreBusiness extends CoreClass {
     checkStore = async _ => {
         await this.api.query(storeQueries.dummy);
     }
+
+
+    getShop = async (shop, accessToken) => await this.api.getShopInfo(shop, accessToken);
 }
