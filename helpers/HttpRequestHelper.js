@@ -62,6 +62,9 @@ export default class HttpRequestHelper extends CoreHelper {
             this.logger.info3(`request_id:${id} - Processed in ${this.#getEndTime(start).toFixed(2)} ms`);
 
             return result;
-        })
+        }).catch(error => {
+            this.logger.error(error);
+            throw error;
+        });
     }
 }

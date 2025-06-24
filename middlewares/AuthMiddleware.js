@@ -43,8 +43,8 @@ export default new class AuthMiddleware extends CoreController {
         try {
             await shopifyAccessService.checkStore();
         } catch (error) {
-            if(isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x === error.status)) return this.response(res, {
-                status: error.status,
+            if(isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x.code === error.status)) return this.response(res, {
+                status: { code: error.status, message: error.message },
                 info: `Shopify API Error: ${error.response.data.errors}. Error occured while authenticating via Shopify.`
             })
         }

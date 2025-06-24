@@ -7,13 +7,14 @@ export default class ShopifyGqlAPI extends CoreAPI {
     }
 
     query = async (query, variables) => {
+        console.log(this.config)
         const response = await this.httpRequest.gpost(`https://${this.config.name}.myshopify.com/admin/api/${process.env.SHOPIFY_API_VERSION}/graphql.json`, {
             query,
             variables
         }, {
             headers: {
                 'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': this.config.decyrptedApiKey
+                'X-Shopify-Access-Token': this.config.decryptedApiKey
             }
         });
 

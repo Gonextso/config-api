@@ -15,7 +15,8 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         name: String,
         decryptedApiKey: String, //* This field using for data transfer. Db does not contain decryptedApiKey.
         domain: { type: String, unique: true, index: true },
-        shopifyShopId: { type: String, unique: true, index: true },
+        shopId: { type: String, unique: true, index: true },
+        shopifyShopId: { type: String, unique: true, index: true }, //TODO: remove this field after migration
         shopOwnerEmail: String,
         plan: String,
         isInventoryTracking: { type: Boolean, default: true },
