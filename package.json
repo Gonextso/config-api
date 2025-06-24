@@ -10,7 +10,8 @@
     "helmet": "^8.1.0",
     "moment": "^2.30.1",
     "mongoose": "^8.13.2",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "redis": "^5.5.6"
   },
   "name": "template-node-api",
   "version": "1.0.0",
