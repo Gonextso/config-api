@@ -14,7 +14,7 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     initializeTenant = async (req, res) => {
-        let result = { isSuccess: false, info: "", status: HttpStatusCodes.CONFLICT, content: null };
+        let result = { isSuccess: false, info: "", status: HttpStatusCodes.SUCCESS, content: null };
         let accessToken = req.headers['x-api-key'] ?? "";
         
         const work = async _ => {
@@ -75,15 +75,13 @@ export default new class ShopifyAuthController extends CoreController {
             let tenant = await Tenant.findOne({
                 'shopify.apiKey.hash': apiKey
             })
-                .select('+shopify.apiKey.encryptedData')
-                .select('+shopify.apiKey.iv')
-                .select('+shopify.apiKey.authTag');
     
             if (tenant) {
                 result = {
                     ...result,
-                    status: HttpStatusCodes.BAD_REQUEST,
+                    status: HttpStatusCodes.SUCCESS,
                     info: "Tenant already exists",
+                    content: tenant
                 }
 
                 return result;
