@@ -22,7 +22,6 @@ export default new class AuthMiddleware extends CoreController {
 
     isShopifyAuthenticated = async (req, res, next) => {
         const apiKey = CryptoHelper.hashKey(req.headers['x-api-key'] ?? "");
-        console.log(apiKey)
         const tenant = await Tenant.findOne({
             'shopify.apiKey.hash': apiKey
         })
