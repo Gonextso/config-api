@@ -108,7 +108,7 @@ export default new class ShopifyAuthController extends CoreController {
 
         result = await SystemHelper.createTransaction({ name: "tenant_initialization" }, CryptoHelper.hashKey(accessToken), work);
 
-        if (result.isSuccess) return this.response(res, {
+        if (result && result.isSuccess) return this.response(res, {
                 ...result
         });
 
