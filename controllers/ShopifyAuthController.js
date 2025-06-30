@@ -14,7 +14,7 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     initializeTenant = async (req, res) => {
-        let result = { isSuccess: false, info: "", status: HttpStatusCodes.SUCCESS, content: null };
+        let result = { isSuccess: false, info: "", status: HttpStatusCodes.CONFLICT, content: null };
         let accessToken = req.headers['x-api-key'] ?? "";
         
         const work = async _ => {
