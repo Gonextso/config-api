@@ -19,7 +19,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         shopId: { type: String, unique: true },
         customerEmail: String,
         billing: {
-            planKey: { type: String, enum: Object.keys(SystemCodes.BILLING_PLAN_KEYS), default: SystemCodes.BILLING_PLAN_KEYS.BASIC },
+            planKey: { type: String, enum: Object.keys(SystemCodes.BILLING_PLAN_KEYS).map(x => x.toLowerCase()), default: SystemCodes.BILLING_PLAN_KEYS.BASIC },
             subscriptionId: String,
             tokenLimit: { type: Number, default: 5 },
             tokenUsed: { type: Number, default: 0 },
