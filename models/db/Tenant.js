@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import moment from "moment";
+import SystemCodes from "../../enums/SystemCodes.js";
 
 export default mongoose.model('Tenant', new mongoose.Schema({
     name: { type: String, required: true },
@@ -17,22 +18,25 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         domain: { type: String, unique: true },
         shopId: { type: String, unique: true },
         customerEmail: String,
-        plan: {
-            name: { type: String, default: "Basic" },
-            isActive: { type: Boolean, default: true },
-            startDate: {
+        billing: {
+            planKey: { type: String, enum: Object.keys(SystemCodes.BILLING_PLAN_KEYS), default: SystemCodes.BILLING_PLAN_KEYS.BASIC },
+            subscriptionId: String,
+            tokenLimit: { type: Number, default: 5 },
+            tokenUsed: { type: Number, default: 0 },
+            periodStart: {
                 type: String,
                 default: function () {
                     return moment().toISOString();
                 }
             },
-            endDate: {
+            periodEnd: {
                 type: String,
                 default: function () {
                     const interval = moment.duration(1, "months");
                     return moment().add(interval).toISOString();
                 }
-            }
+            },
+            isBlocked: { type: Boolean, default: false }
         },
         isInventoryTracking: { type: Boolean, default: true },
         schedules: {

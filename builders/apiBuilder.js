@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import ErrorController from '../controllers/ErrorController.js';
 import healthRouter  from '../routes/health.js' ;
 import shopifyAuthRouter from '../routes/shopify/auth.js';
+import billingRouter from '../routes/billing.js';
 import adminRouter  from '../routes/admin.js';
 import tenantRouter from '../routes/tenant.js';
 import proxyRouter from '../routes/proxy.js';
@@ -54,6 +55,7 @@ app.use(RequestMiddleware.setTraceId);
 app.use(`${routePrefix}/health`, healthRouter);
 app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
 app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
+app.use(`${routePrefix}/billing`, billingRouter);
 app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, tenantRouter);
 app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
