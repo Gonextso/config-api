@@ -16,7 +16,8 @@ export default class {
             DESCRIPTION: 'Başlangıç ve uygulamanın test edilmesi için ideal bir plan',
             DETAILS: [
                 "7 günlük log kaydı",
-                "5 sipariş aktarımı"
+                "5 sipariş aktarımı",
+                "Limitsiz iptal sipariş aktarımı"
             ],
             PRICE: 0,
             DISCOUNTED_PRICE: 0,
@@ -27,7 +28,8 @@ export default class {
             DESCRIPTION: 'Orta ölçekli işletmeler için tavsiye edilen plan',
             DETAILS: [
                 "7 günlük log kaydı",
-                "500 sipariş aktarımı"
+                "500 sipariş aktarımı",
+                "Limitsiz iptal sipariş aktarımı"
             ],
             PRICE: 129.99,
             DISCOUNTED_PRICE: 99.99,
@@ -39,6 +41,7 @@ export default class {
             DETAILS: [
                 "30 günlük log kaydı",
                 "Sınırsız sipariş aktarımı",
+                "Limitsiz iptal sipariş aktarımı",
                 "Uygulama içi destek/talep portalı",
                 "Aktarım sıklıkları ayarlanabilir"
             ],
