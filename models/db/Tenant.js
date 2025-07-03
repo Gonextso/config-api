@@ -5,7 +5,6 @@ import SystemCodes from "../../enums/SystemCodes.js";
 export default mongoose.model('Tenant', new mongoose.Schema({
     name: { type: String, required: true },
     apiKey: { type: String, unique: true, required: true, select: false },
-    salesUrl: String, //TODO: check if this is needed, or if it can be derived from shopify.domain
     shopify: {
         apiKey: {
             hash: { type: String, select: false },
@@ -20,7 +19,10 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         customerEmail: String,
         billing: {
             planKey: { type: String, enum: Object.keys(SystemCodes.BILLING_PLAN_KEYS).map(x => x.toLowerCase()), default: SystemCodes.BILLING_PLAN_KEYS.BASIC },
-            subscriptionId: String,
+            subscription: {
+                id: String,
+                lineId: String
+            },
             tokenLimit: { type: Number, default: 5 },
             tokenUsed: { type: Number, default: 0 },
             periodStart: {
@@ -100,6 +102,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         host: String,
         user: String,
         userGroup: String,
+        salesUrl: String, //TODO: check if this is needed, or if it can be derived from shopify.domain
         password: {
             hash: { type: String, select: false },
             encryptedData: { type: String, select: false },

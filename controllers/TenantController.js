@@ -27,6 +27,13 @@ export default new class TenantController extends CoreController {
             tenant.nebim.password = CryptoHelper.encrypt(updateData.nebim.password);
         }
 
+        if ((updateData.shopify && updateData.shopify.schedules) && tenant.shopify.billing.isBlocked) 
+            return this.response(res, {
+                content: tenant,
+                info: "Schedules cannot be patched when there is no active plan on store",
+                status: HttpStatusCodes.BAD_REQUEST
+            });
+
         ObjectHelper.deepMerge(tenant, updateData);
 
         await tenant.save();
