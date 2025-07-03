@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import LogHelper from "../helpers/LogHelper.js";
 import CLSHelper from "../helpers/CLSHelper.js";
+import ClientError from "../models/error/ClientError.js"
 
 export default class CoreClass {
     constructor(tenant) {
@@ -9,8 +10,12 @@ export default class CoreClass {
         this.traceId = CLSHelper.get('traceId');
     }
     
-    throws = (message) => {
-        throw new Error(message);
+    throws = (message, isClientError = false) => {
+        if (isClientError) {
+            throw new ClientError(message)
+        } else {
+            throw new Error(message);
+        }
     }
 
     exit = (reason) => {

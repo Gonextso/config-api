@@ -60,7 +60,7 @@ app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, ConfigMi
 app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
 app.use('/', ErrorController.notFound);
-app.use(ErrorController.internalServerError);
+app.use(ErrorController.clientErrorHandler, ErrorController.internalServerError);
 
 if (!process.env.PORT) process.exit(1);
 

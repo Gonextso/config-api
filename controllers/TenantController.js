@@ -22,10 +22,29 @@ export default new class TenantController extends CoreController {
         const updateData = req.body;
         const tenant = await Tenant.findById(req.tenant._id);
 
-        if (updateData.shopify && updateData.shopify.apiKey) delete updateData.shopify.apiKey;
-        if (updateData.nebim && updateData.nebim.password) {
-            tenant.nebim.password = CryptoHelper.encrypt(updateData.nebim.password);
+        if (updateData.nebim && (updateData.nebim.password || updateData.nebim.host || updateData.nebim.user || updateData.nebim.userGroup  )) {
+            const response = await this.httpRequest.post(`${process.env.INTEGRATION_API_HOST}/nebim/check`, {
+                ...tenant.nebim,
+                ...updateData.nebim
+            }, {
+                headers: {
+                    'x-tenant-id': tenant._id
+                }
+            }).catch(_ => {
+                this.throws('Connection cannot created to nebim', true)
+            });
+
+            tenant.nebim.user = response.data.content.UserName;
+            tenant.nebim.userGroup = response.data.content.UserGroupCode;
+
+            tenant.nebim.order.office = response.data.content.OfficeCode ?? "";
+            tenant.nebim.order.store = response.data.content.StoreCode ?? "";
+            tenant.nebim.order.company = response.data.content.CompanyCode ?? "";
+
+            if (updateData.nebim.password) updateData.nebim.password = CryptoHelper.encrypt(updateData.nebim.password);
         }
+
+        if (updateData.shopify && updateData.shopify.apiKey) delete updateData.shopify.apiKey;
 
         if ((updateData.shopify && updateData.shopify.schedules) && tenant.shopify.billing.isBlocked) 
             return this.response(res, {

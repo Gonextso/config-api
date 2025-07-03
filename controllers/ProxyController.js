@@ -15,7 +15,7 @@ export default new class ProxyController extends CoreController {
             const path = Array.isArray(req.params.splat) ? req.params.splat.join('/') : (req.params.splat || '');
             const url = `${process.env.INTEGRATION_API_HOST}/${path}`;
             const ALLOWED_PATHS = [
-                'nebim/check',
+                'nebim/check', //TODO: depreciated
                 'shopify/nebim/order/sync_failed'
             ];
 

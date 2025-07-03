@@ -122,6 +122,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             creditCardType: String,
             office: String,
             store: String,
+            company: String,
             warehouse: String,
             cancelReason: String
         },

@@ -1,9 +1,11 @@
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
+import HttpRequestHelper from "../helpers/HttpRequestHelper.js";
 import CoreClass from "./CoreClass.js";
 
 export default class CoreController extends CoreClass {
     constructor() {
         super();
+        this.httpRequest = new HttpRequestHelper();
     }
 
     response = async (res, { content, headers, info, status, error } = { status: HttpStatusCodes.SUCCESS, content: {} }) => {
