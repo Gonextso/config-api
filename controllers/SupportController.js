@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import CoreController from "../core/CoreControler.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 import SystemCodes from "../enums/SystemCodes.js";
@@ -51,7 +52,7 @@ export default new class SupportController extends CoreController {
     addCommentToTicket = async (req, res) => {
         const ticketId = req.params.ticketId;
 
-        if (!ticketId) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST, info: 'ticket id required' });
+        if (!ticketId || (ticketId && !mongoose.isValidObjectId(ticketId))) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST, info: 'ticket id validation failed' });
         if (!req.body) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
         const fromCustomer = true; //TODO: fix this by using admin api key
         const ticket = await SupportTicket.findById(ticketId);
