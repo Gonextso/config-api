@@ -52,6 +52,7 @@ export default new class SupportController extends CoreController {
         const ticketId = req.params.ticketId;
 
         if (!ticketId) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST, info: 'ticket id required' });
+        if (!req.body) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
         const fromCustomer = true; //TODO: fix this by using admin api key
         const ticket = await SupportTicket.findById(ticketId);
 
