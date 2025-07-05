@@ -57,6 +57,8 @@ export default new class SupportController extends CoreController {
         const fromCustomer = true; //TODO: fix this by using admin api key
         const ticket = await SupportTicket.findById(ticketId);
 
+        if (!ticket) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST })
+
         ticket.messages.push({ text: req.body.message, fromCustomer: fromCustomer });
 
         await ticket.save();
