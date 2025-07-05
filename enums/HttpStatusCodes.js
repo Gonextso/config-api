@@ -23,6 +23,10 @@ export default {
         code: 401,
         message: 'You are not authenticated'
     },
+    PAYMENT_REQUIRED: {
+        code: 402,
+        message: 'Payment required'
+    },
     UNAUTHORIZED: {
         code: 403,
         message: 'You are unauthorized'

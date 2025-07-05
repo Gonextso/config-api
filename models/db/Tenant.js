@@ -13,7 +13,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             authTag: { type: String, select: false }
         },
         name: String,
-        decryptedApiKey: String, //* This field using for data transfer. Db does not contain decryptedApiKey.
+        decryptedApiKey: String, //? This field using for data transfer. Db does not contain decryptedApiKey.
         domain: { type: String, unique: true },
         shopId: { type: String, unique: true },
         customerEmail: String,
@@ -21,7 +21,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             planKey: { type: String, enum: Object.keys(SystemCodes.BILLING_PLAN_KEYS).map(x => x.toLowerCase()), default: SystemCodes.BILLING_PLAN_KEYS.BASIC },
             subscription: {
                 id: String,
-                lineId: String
+                lineId: String //? It can be used in feature for mixed sub models or shopify quota usage. we are using our own token mechanism
             },
             tokenLimit: { type: Number, default: 5 },
             tokenUsed: { type: Number, default: 0 },
@@ -38,7 +38,9 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                     return moment().add(interval).toISOString();
                 }
             },
-            isBlocked: { type: Boolean, default: false }
+            isBlocked: { type: Boolean, default: false },
+            pendingNonce: String,
+            pendingPlanKey: String
         },
         isInventoryTracking: { type: Boolean, default: true },
         schedules: {

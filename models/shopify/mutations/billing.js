@@ -1,9 +1,10 @@
 export default {
     createSub: `
-mutation ($name: String!, $returnUrl: URL!, $price: Decimal!) {
+mutation ($name: String!, $returnUrl: URL!, $price: Decimal!, $test: Boolean = false ) {
   appSubscriptionCreate(
     name: $name
     returnUrl: $returnUrl
+    test: $test 
     lineItems: [{
       plan: {
         appRecurringPricingDetails: {
@@ -14,7 +15,10 @@ mutation ($name: String!, $returnUrl: URL!, $price: Decimal!) {
     }]
   ) {
     confirmationUrl
-    appSubscription { id }
+    appSubscription {
+      id
+      lineItems { id }
+    }
     userErrors { field message }
   }
 }`

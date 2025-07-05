@@ -21,7 +21,8 @@ export default class {
             ],
             PRICE: 0,
             DISCOUNTED_PRICE: 0,
-            CURRENCY: 'USD'
+            CURRENCY: 'USD',
+            TOKEN_LIMIT: 5
         },
         COMMUNITY: {
             KEY: 'community',
@@ -33,7 +34,8 @@ export default class {
             ],
             PRICE: 129.99,
             DISCOUNTED_PRICE: 99.99,
-            CURRENCY: 'USD'
+            CURRENCY: 'USD',
+            TOKEN_LIMIT: 500
         },
         ENTERPRISE: {
             KEY: 'enterprise',
@@ -45,9 +47,10 @@ export default class {
                 "Uygulama içi destek/talep portalı",
                 "Aktarım sıklıkları ayarlanabilir"
             ],
-            PRICE: 269.99,
-            DISCOUNTED_PRICE: 249.99,
-            CURRENCY: 'USD'
+            PRICE: 219.99,
+            DISCOUNTED_PRICE: 199.99,
+            CURRENCY: 'USD',
+            TOKEN_LIMIT: 0
         }
     }
 }
