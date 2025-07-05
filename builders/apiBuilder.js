@@ -9,6 +9,7 @@ import shopifyAuthRouter from '../routes/shopify/auth.js';
 import billingRouter from '../routes/billing.js';
 import adminRouter  from '../routes/admin.js';
 import tenantRouter from '../routes/tenant.js';
+import supportRouter from '../routes/supportRouter.js';
 import proxyRouter from '../routes/proxy.js';
 import RequestMiddleware from '../middlewares/RequestMiddleware.js';
 import AuthMiddleware from '../middlewares/AuthMiddleware.js';
@@ -56,11 +57,12 @@ app.use(`${routePrefix}/health`, healthRouter);
 app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
 app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
 app.use(`${routePrefix}/billing`, billingRouter);
+app.use(`${routePrefix}/support/shopify`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, RequestMiddleware.setEcommerceIdAsShopify, supportRouter);
 app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, tenantRouter);
 app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
 app.use('/', ErrorController.notFound);
-app.use(ErrorController.clientErrorHandler, ErrorController.internalServerError);
+app.use(ErrorController.errorHandler);
 
 if (!process.env.PORT) process.exit(1);
 

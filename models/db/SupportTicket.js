@@ -4,6 +4,7 @@ export default mongoose.model('SupportTicket', new mongoose.Schema({
     tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
     ecommerceId: { type: String, required: true },
     subject: { type: String, required: true },
+    isError: { type: Boolean, default: false },
     messages: [
         {
             text: { type: String, required: true },

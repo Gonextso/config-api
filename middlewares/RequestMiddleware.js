@@ -14,4 +14,9 @@ export default new class LogMiddleware {
             next();
         })
     }
+
+    setEcommerceIdAsShopify = async (req, _, next) => {
+        req.ecommerceId = "shopify";
+        next();
+    }
 }

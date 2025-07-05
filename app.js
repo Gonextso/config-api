@@ -6,3 +6,5 @@ import './builders/customBuilder.js';
 //TODO: support logic
 //TODO: billing logic
 //TODO: ödemelerin kontrol logic'i
+//TODO: token yüzünden gönderilemeyen siparişlerin tarih bazlı çekildiğinde gönderilememesi
+//TODO: fix error handler
