@@ -18,92 +18,80 @@ export default new class ShopifyAuthController extends CoreController {
         let accessToken = req.headers['x-api-key'] ?? "";
         
         const work = async _ => {
-            const newTenant = req.body;
-
-            // if (!idToken) { //TODO: remove if id token will never used
-            //     result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
-
-            //     return result;
-            // }
-    
-            if (!newTenant || !newTenant.name) {
-                result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: "Missing tenant info in request body" };
-                
-                return result;
-            }
-    
-            // let accessToken = null; //TODO: remove if id token will never used
-            let shop = null;
-    
-            // try { //TODO: remove if id token will never used
-            //     accessToken = await this.api.getAccessToken(newTenant.name, idToken);
-            // } catch (error) {
-            //     result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
-
-            //     return result;
-            // }
-    
-            if (!accessToken) {
-                result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
-
-                return result;
-            }
-    
-            const apiKey = CryptoHelper.hashKey(accessToken);
-    
-            newTenant.shopify = {}
-            newTenant.shopify.decryptedApiKey = accessToken;
-    
-            const shopifyAccessService = new ShopifyStoreBusiness(newTenant);
-    
             try {
-                shop = await shopifyAccessService.getShop(newTenant.name, accessToken);
-            } catch (error) {
-                if (isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x.code === error.status)) {
-                    result = { ...result, status: { code: error.status, message: error.message }, info: `Shopify API Error: ${error.response.data.errors}. Error occured while authenticating via Shopify.` };
-
+                const newTenant = req.body;
+        
+                if (!newTenant || !newTenant.name) {
+                    result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: "Missing tenant info in request body" };
+                    
                     return result;
                 }
-            }
+                let shop = null;
+        
+                if (!accessToken) {
+                    result = { ...result, status: HttpStatusCodes.UNAUTHORIZED };
     
-            if (!shop) {
-                result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: `Shop with name ${newTenant.shopify.name} does not exist or is not accessible. Please check the shop name and API key.` };
-
-                return result;
-            }
-    
-            let tenant = await Tenant.findOne({
-                'shopify.apiKey.hash': apiKey
-            })
-    
-            if (tenant) {
-                result = {
-                    ...result,
-                    status: HttpStatusCodes.SUCCESS,
-                    info: "Tenant already exists",
-                    content: tenant
+                    return result;
                 }
-
-                return result;
-            }
+        
+                const apiKey = CryptoHelper.hashKey(accessToken);
+        
+                newTenant.shopify = {}
+                newTenant.shopify.decryptedApiKey = accessToken;
+        
+                const shopifyAccessService = new ShopifyStoreBusiness(newTenant);
+        
+                try {
+                    shop = await shopifyAccessService.getShop(newTenant.name, accessToken);
+                } catch (error) {
+                    if (isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x.code === error.status)) {
+                        result = { ...result, status: { code: error.status, message: error.message }, info: `Shopify API Error: ${error.response.data.errors}. Error occured while authenticating via Shopify.` };
     
-            const tenantDto = {
-                name: newTenant.name,
-                shopify: {
+                        return result;
+                    }
+                }
+        
+                if (!shop) {
+                    result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: `Shop with name ${newTenant.shopify.name} does not exist or is not accessible. Please check the shop name and API key.` };
+    
+                    return result;
+                }
+        
+                let tenant = await Tenant.findOne({
+                    'shopify.apiKey.hash': apiKey
+                })
+        
+                if (tenant) {
+                    result = {
+                        ...result,
+                        status: HttpStatusCodes.SUCCESS,
+                        info: "Tenant already exists",
+                        content: tenant
+                    }
+    
+                    return result;
+                }
+        
+                const tenantDto = {
                     name: newTenant.name,
-                    domain: shop.domain ?? `${newTenant.name}.myshopify.com`, //TODO: replace with actual domain
-                    shopId: shop.id,
-                    customerEmail: shop.customer_email,
-                    apiKey: {...CryptoHelper.encrypt(accessToken)}
-                },
-                apiKey: "UNUSED",
+                    shopify: {
+                        name: newTenant.name,
+                        domain: shop.domain ?? `${newTenant.name}.myshopify.com`, //TODO: replace with actual domain
+                        shopId: shop.id,
+                        customerEmail: shop.customer_email,
+                        apiKey: {...CryptoHelper.encrypt(accessToken)}
+                    },
+                    apiKey: "UNUSED",
+                }
+        
+                tenant = new Tenant(tenantDto);
+        
+                await tenant.save();
+    
+                return { isSuccess: true, status: HttpStatusCodes.CREATED, info: "Tenant initialized successfully", content: tenant };
+            } catch (error) {
+                return { isSuccess: false, status: HttpStatusCodes.SERVER_ERROR, info: error.message };
             }
-    
-            tenant = new Tenant(tenantDto);
-    
-            await tenant.save();
-
-            return { isSuccess: true, status: HttpStatusCodes.CREATED, info: "Tenant initialized successfully", content: tenant };
         }
 
         result = await SystemHelper.createTransaction({ name: "tenant_initialization" }, CryptoHelper.hashKey(accessToken), work);
