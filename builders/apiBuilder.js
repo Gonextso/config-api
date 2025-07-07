@@ -57,8 +57,8 @@ app.use(`${routePrefix}/health`, healthRouter);
 app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
 app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
 app.use(`${routePrefix}/billing`, billingRouter);
-app.use(`${routePrefix}/support/shopify`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, RequestMiddleware.setEcommerceIdAsShopify, supportRouter);
-app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, ConfigMiddleware.setConfigViaTenantId, tenantRouter);
+app.use(`${routePrefix}/support/shopify`, AuthMiddleware.isShopifyAuthenticated, RequestMiddleware.setEcommerceIdAsShopify, supportRouter);
+app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, tenantRouter);
 app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
 app.use('/', ErrorController.notFound);
