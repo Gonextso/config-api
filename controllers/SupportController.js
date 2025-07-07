@@ -65,4 +65,20 @@ export default new class SupportController extends CoreController {
 
         return this.response(res, { status: HttpStatusCodes.CREATED, content: ticket })
     }
+
+    closeTicket = async (req, res) => {
+        const ticketId = req.params.ticketId;
+
+        if (!ticketId || (ticketId && !mongoose.isValidObjectId(ticketId))) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST, info: 'ticket id validation failed' });
+        if (!req.body) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
+        const ticket = await SupportTicket.findById(ticketId);
+
+        if (!ticket) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
+
+        ticket.isActive = false;
+
+        await ticket.save();
+
+        return this.response(res, { status: HttpStatusCodes.CREATED, content: ticket });
+    }
 }

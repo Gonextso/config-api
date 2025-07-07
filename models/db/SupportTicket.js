@@ -5,6 +5,7 @@ export default mongoose.model('SupportTicket', new mongoose.Schema({
     ecommerceId: { type: String, required: true },
     subject: { type: String, required: true },
     isError: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
     messages: [
         {
             text: { type: String, required: true },
