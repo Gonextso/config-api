@@ -20,7 +20,7 @@ export default new class ProxyController extends CoreController {
             ];
 
             if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.toLocaleLowerCase() === allowedPath)) {
-                return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED, info: 'Forbidden path'});
+                return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED, info: 'Forbidden path' });
             }
 
             const method = req.method.toLowerCase();
@@ -37,12 +37,13 @@ export default new class ProxyController extends CoreController {
                     'X-Forwarded-For': req.ip,
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-Original-Path': req.originalUrl,
+                    'x-tenant-id': req.tenant._id
                 },
                 httpAgent: agent,
                 data: req.body,
                 params: req.query,
             };
-            
+
             const response = await axios(axiosConfig);
             return res.status(response.status).json(response.data);
         } catch (error) {
