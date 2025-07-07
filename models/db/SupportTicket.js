@@ -12,5 +12,6 @@ export default mongoose.model('SupportTicket', new mongoose.Schema({
             date: { type: Date, default: Date.now },
             fromCustomer: { type: Boolean, default: false },
         }
-    ]
+    ],
+    createdAt: { type: Date, default: Date.now },
 }));
