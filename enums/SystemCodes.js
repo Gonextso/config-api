@@ -20,7 +20,7 @@ export default class {
                 "Limitsiz iptal sipariş aktarımı"
             ],
             PRICE: 0,
-            DISCOUNTED_PRICE: 0,
+            DISCOUNTED_PRICE_FROM: 0,
             CURRENCY: 'USD',
             TOKEN_LIMIT: 5
         },
@@ -32,8 +32,8 @@ export default class {
                 "500 sipariş aktarımı",
                 "Limitsiz iptal sipariş aktarımı"
             ],
-            PRICE: 129.99,
-            DISCOUNTED_PRICE: 99.99,
+            PRICE: 99.99,
+            DISCOUNTED_PRICE_FROM: 129.99,
             CURRENCY: 'USD',
             TOKEN_LIMIT: 500
         },
@@ -47,8 +47,8 @@ export default class {
                 "Uygulama içi destek/talep portalı",
                 "Aktarım sıklıkları ayarlanabilir"
             ],
-            PRICE: 219.99,
-            DISCOUNTED_PRICE: 199.99,
+            PRICE: 199.99,
+            DISCOUNTED_PRICE_FROM: 219.99,
             CURRENCY: 'USD',
             TOKEN_LIMIT: 0
         }
