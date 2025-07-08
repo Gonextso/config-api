@@ -21,7 +21,7 @@ export default new class ShopifyAuthController extends CoreController {
             try {
                 const newTenant = req.body;
         
-                if (!newTenant || !newTenant.name) {
+                if (!newTenant?.name) {
                     result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: "Missing tenant info in request body" };
                     
                     return result;
@@ -96,7 +96,7 @@ export default new class ShopifyAuthController extends CoreController {
 
         result = await SystemHelper.createTransaction({ name: "tenant_initialization" }, CryptoHelper.hashKey(accessToken), work);
 
-        if (result && result.isSuccess) return this.response(res, {
+        if (result?.isSuccess) return this.response(res, {
                 ...result
         });
 
@@ -105,20 +105,33 @@ export default new class ShopifyAuthController extends CoreController {
         })
     }
 
-    getTenant = async () => {
-        
+    handleGdprDataRequest = async (req, res) => {
+        console.log('GDPR customers/data_request webhook received:', req.body);
+        return this.response(res, {
+            isSuccess: true,
+            status: HttpStatusCodes.SUCCESS,
+            info: "GDPR customers/data_request webhook received",
+            content: req.body
+        });
     }
 
-    deleteTenant = async (req, res) => { //TODO: remove it on prod
-        const apiKey = CryptoHelper.hashKey(req.headers['x-api-key'] ?? "");
-
-        let tenant = await Tenant.deleteOne({
-            'shopify.apiKey.hash': apiKey
-        })
-
+    handleGdprCustomersRedact = async (req, res) => {
+        console.log('GDPR customers/redact webhook received:', req.body);
         return this.response(res, {
-            status: HttpStatusCodes.CREATED,
-            info: "Tenant removed successfully"
+            isSuccess: true,
+            status: HttpStatusCodes.SUCCESS,
+            info: "GDPR customers/data_request webhook received",
+            content: req.body
+        });
+    }
+
+    handleGdprShopRedact = async (req, res) => {
+        console.log('GDPR shop/redact webhook received:', req.body);
+        return this.response(res, {
+            isSuccess: true,
+            status: HttpStatusCodes.SUCCESS,
+            info: "GDPR shop/redact webhook received",
+            content: req.body
         });
     }
 }

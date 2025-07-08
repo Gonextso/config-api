@@ -106,4 +106,29 @@ export default new class AuthMiddleware extends CoreController {
 
         next();
     }
+
+    isShopifyHmacValid = (req, res, next) => {
+        const hmacHeader = req.get('x-shopify-hmac-sha256');
+        if (!hmacHeader) {
+            return this.response(res, {
+                status: HttpStatusCodes.UNAUTHORIZED,
+                info: 'Missing HMAC header.'
+            });
+        }
+        const rawBody = req.rawBody || req.body;
+        let bodyString;
+        if (typeof rawBody === 'object') {
+            bodyString = JSON.stringify(rawBody);
+        } else {
+            bodyString = rawBody;
+        }
+        const generatedHmac = CryptoHelper.createShopifyWebhookHmac(bodyString);
+        if (generatedHmac !== hmacHeader) {
+            return this.response(res, {
+                status: HttpStatusCodes.UNAUTHORIZED,
+                info: 'Invalid HMAC.'
+            });
+        }
+        next();
+    }
 }

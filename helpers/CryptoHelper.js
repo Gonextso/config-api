@@ -49,9 +49,14 @@ export default class CryptoHelper {
             .update(msg)
             .digest("hex");
 
-        if (digest !== hmac)
-            return false
+        return digest === hmac;
+    }
 
-        return true
+    static createShopifyWebhookHmac = (bodyString) => {
+        const secret = process.env.SHOPIFY_CLIENT_SECRET;
+        return crypto
+            .createHmac('sha256', secret)
+            .update(bodyString, 'utf8')
+            .digest('base64');
     }
 }
