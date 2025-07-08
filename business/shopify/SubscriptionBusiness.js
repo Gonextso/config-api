@@ -34,7 +34,7 @@ export default class SubscriptionBusiness extends CoreClass {
         return response;
     };
 
-    getActiveSubscriptionId = async () => {
+    getActiveSubscription = async () => {
         const { data, errors } = await this.shopifyGqlAPI.query(billingQueries.activeSub, {});
 
         if (errors) {
@@ -47,7 +47,7 @@ export default class SubscriptionBusiness extends CoreClass {
         if (!activeSub || activeSub.status !== "ACTIVE")
             return ""
 
-        return activeSub.id
+        return { id: activeSub.id, url: data.lauchUrl }
     }
 
     /* placeholders for future logic */

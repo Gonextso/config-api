@@ -51,9 +51,9 @@ export default new class BillingController extends CoreController {
             return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED })
 
         const subscriptionBusiness = new SubscriptionBusiness(req.tenant);
-        const activeSubscriptionId = subscriptionBusiness.getActiveSubscriptionId()
+        const activeSubscription= subscriptionBusiness.getActiveSubscription()
 
-        if (!activeSubscriptionId)
+        if (!activeSubscription.id)
             return this.response(res, { status: HttpStatusCodes.PAYMENT_REQUIRED })
 
         const planKey = tenant.shopify.billing.pendingPlanKey
@@ -70,7 +70,7 @@ export default new class BillingController extends CoreController {
                 "shopify.billing.pendingPlanKey":  1 
             }
         });
-
-        return this.response(res, { status: HttpStatusCodes.CREATED }); //TODO: redirect to app
+        const redirectUrl = `${activeSubscription.url}/app?shop=${shop}&host=${host}&billing=success`;
+        return res.redirect(302, redirectUrl);
     }
 }
