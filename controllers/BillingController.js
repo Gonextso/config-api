@@ -71,6 +71,6 @@ export default new class BillingController extends CoreController {
             }
         });
 
-        return this.response(res, { status: HttpStatusCodes.CREATED });
+        return this.response(res, { status: HttpStatusCodes.CREATED }); //TODO: redirect to app
     }
 }

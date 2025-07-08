@@ -19,15 +19,15 @@ export default class SubscriptionBusiness extends CoreClass {
         tenant.shopify.billing.pendingNonce = CryptoHelper.generateToken();
         await tenant.save();
 
-        const returnUrl = `https://api.gonextso.com/api/config${returnPath}?tenant=${tenant._id}&shop=${shop}&nonce=${nonce}`;
+        const returnUrl = `https://api.gonextso.com/api/config${returnPath}?tenant=${tenant._id}&shop=${shop}&nonce=${tenant.shopify.billing.pendingNonce}`;
         const response = await this.shopifyGqlAPI.query(billingMutations.createSub, {
             name: `${planKey} Plan`,
             returnUrl,
-            price: SystemCodes.BILLING_PLANS[planKey].PRICE,
+            price: SystemCodes.BILLING_PLANS[planKey.toUpperCase()].PRICE,
             test: process.env.ENV === "dev"
         })
 
-        if (response.userErrors.length) {
+        if (response.userErrors && response.userErrors.length) {
             this.throws("Shopify billing error: " + JSON.stringify(userErrors), true);
         }
 
