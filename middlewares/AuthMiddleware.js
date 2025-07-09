@@ -123,7 +123,7 @@ export default new class AuthMiddleware extends CoreController {
             bodyString = rawBody;
         }
 
-        console.log(JSON.stringify(req.body), '----', hmacHeader);
+        console.log(JSON.stringify(req.body), '----', bodyString);
         const generatedHmac = CryptoHelper.createShopifyWebhookHmac(bodyString);
         console.log(generatedHmac, '----', hmacHeader);
         if (generatedHmac !== hmacHeader) {
