@@ -5,11 +5,6 @@ export default class {
     static ECOMMERCE = {
         SHOPIFY: 'shopify'
     }
-    static BILLING_PLAN_KEYS = {
-        BASIC: 'basic',
-        COMMUNITY: 'community',
-        ENTERPRISE: 'enterprise'
-    }
     static PROCESS = {
         SYNC_CUSTOMER: 'SYNC_CUSTOMER',
         SYNC_ORDERS: 'SYNC_ORDERS',
