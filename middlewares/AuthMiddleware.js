@@ -119,7 +119,7 @@ export default new class AuthMiddleware extends CoreController {
         const bodyString = req.rawBody;
         if (!bodyString) {
             return this.response(res, {
-                status: HttpStatusCodes.BAD_REQUEST,
+                status: HttpStatusCodes.NOT_AUTHENTICATED,
                 info: 'Raw body not available for HMAC validation.'
             });
         }
