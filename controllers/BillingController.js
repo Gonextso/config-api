@@ -9,16 +9,16 @@ export default new class BillingController extends CoreController {
     }
 
     handleSubscriptionUpdate = async (req, res) => {
-        const { status, plan_handle, admin_graphql_api_shop_id, admin_graphql_api_id } = req.body.app_subscription;
+        const { status, name, admin_graphql_api_shop_id, admin_graphql_api_id } = req.body.app_subscription;
         const tenant = await Tenant.findOne({ "shopify.shopId": admin_graphql_api_shop_id.replace("gid://shopify/Shop/", "") });
 
         if (!tenant) return this.response(res, { status: HttpStatusCodes.NOT_FOUND });
 
         if (status.toLowerCase() === "active" || status.toLowerCase() === "trialing") {
             tenant.updateOne({ 
-                "shopify.billing.planKey": plan_handle,
+                "shopify.billing.planKey": name.toUpperCase(),
                 "shopify.billing.subscription.id": admin_graphql_api_id,
-                "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS[plan_handle].TOKEN_LIMIT,
+                "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS[name.toUpperCase()].TOKEN_LIMIT,
                 "shopify.billing.tokenUsed": 0,
                 "shopify.billing.periodStart": new Date().toISOString(),
                 "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
