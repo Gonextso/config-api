@@ -124,9 +124,7 @@ export default new class AuthMiddleware extends CoreController {
             });
         }
 
-        console.log(JSON.stringify(req.body), '----', bodyString);
         const generatedHmac = CryptoHelper.createShopifyWebhookHmac(bodyString);
-        console.log(generatedHmac, '----', hmacHeader);
         if (generatedHmac !== hmacHeader) {
             return this.response(res, {
                 status: HttpStatusCodes.NOT_AUTHENTICATED,
