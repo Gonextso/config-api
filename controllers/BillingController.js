@@ -32,7 +32,6 @@ export default new class BillingController extends CoreController {
                 }
              });
         } else if (
-            status === "CANCELLED" || 
             status === "EXPIRED" || 
             status === "DECLINED" || 
             status === "PENDING" || 
@@ -45,6 +44,20 @@ export default new class BillingController extends CoreController {
             await tenant.updateOne({
                 "shopify.billing.isActive": false,
                 "shopify.billing.periodEnd": new Date().toISOString(),
+                $unset: { 
+                    "shopify.billing.pendingNonce": 1,
+                    "shopify.billing.pendingPlanKey":  1 
+                }
+            });
+        } else if (status === "CANCELLED") {
+            await tenant.updateOne({
+                "shopify.billing.isActive": true,
+                "shopify.billing.planKey": SystemCodes.BILLING_PLANS.BASIC.KEY,
+                "shopify.billing.subscription.id": null,
+                "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
+                "shopify.billing.tokenUsed": 0,
+                "shopify.billing.periodStart": new Date().toISOString(),
+                "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
                 $unset: { 
                     "shopify.billing.pendingNonce": 1,
                     "shopify.billing.pendingPlanKey":  1 
