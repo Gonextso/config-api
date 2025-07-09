@@ -14,8 +14,6 @@ export default new class BillingController extends CoreController {
 
         if (!tenant) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
 
-        console.log(status, name, admin_graphql_api_shop_id, admin_graphql_api_id);
-
         if ( created_at < tenant.shopify.billing.periodStart ) {
             return this.response(res, { status: HttpStatusCodes.SUCCESS });
         }
