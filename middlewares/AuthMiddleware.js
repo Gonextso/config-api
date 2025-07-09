@@ -115,12 +115,13 @@ export default new class AuthMiddleware extends CoreController {
                 info: 'Missing HMAC header.'
             });
         }
-        const rawBody = req.rawBody || req.body;
-        let bodyString;
-        if (typeof rawBody === 'object') {
-            bodyString = JSON.stringify(rawBody);
-        } else {
-            bodyString = rawBody;
+
+        const bodyString = req.rawBody;
+        if (!bodyString) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: 'Raw body not available for HMAC validation.'
+            });
         }
 
         console.log(JSON.stringify(req.body), '----', bodyString);
