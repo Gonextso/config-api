@@ -122,6 +122,8 @@ export default new class AuthMiddleware extends CoreController {
         } else {
             bodyString = rawBody;
         }
+
+        this.logger.info2(req.body);
         const generatedHmac = CryptoHelper.createShopifyWebhookHmac(bodyString);
         if (generatedHmac !== hmacHeader) {
             return this.response(res, {
