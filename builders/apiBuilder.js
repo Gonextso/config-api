@@ -24,8 +24,12 @@ const app = express();
 const routePrefix = `/rest/${process.env.API_TYPE}/${process.env.VERSION}`;
 
 app.use(helmet());
+app.use(bodyParser.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
 app.use(morgan(function (tokens, req, res) {
     if (req.tenant) logger = new LogHelper(req.tenant);
 
