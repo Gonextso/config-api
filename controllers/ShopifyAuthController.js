@@ -82,7 +82,7 @@ export default new class ShopifyAuthController extends CoreController {
                     name: newTenant.name,
                     shopify: {
                         name: newTenant.name,
-                        domain: shop.domain ?? `${newTenant.name}.myshopify.com`, //TODO: replace with actual domain
+                        domain: shop.domain ?? `${newTenant.name}.myshopify.com`,
                         shopId: shop.id,
                         customerEmail: shop.customer_email,
                         apiKey: {...CryptoHelper.encrypt(accessToken)}

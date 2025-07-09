@@ -13,9 +13,9 @@ export default class CoreClass {
     throws = (message, isClientError = false) => {
         if (isClientError) {
             throw new ClientError(message)
-        } else {
-            throw new Error(message);
-        }
+        } 
+        
+        throw new Error(message);
     }
 
     exit = (reason) => {

@@ -18,7 +18,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         shopId: { type: String, unique: true },
         customerEmail: String,
         billing: {
-            planKey: { type: String, enum: Object.keys(SystemCodes.BILLING_PLANS).map(x => x.toLowerCase()), default: SystemCodes.BILLING_PLANS.BASIC.KEY },
+            planKey: { type: String, enum: Object.keys(SystemCodes.BILLING_PLANS), default: SystemCodes.BILLING_PLANS.BASIC.KEY },
             subscription: {
                 id: String,
                 lineId: String //? It can be used in feature for mixed sub models or shopify quota usage. we are using our own token mechanism
@@ -104,7 +104,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         host: String,
         user: String,
         userGroup: String,
-        salesUrl: String, //TODO: check if this is needed, or if it can be derived from shopify.domain
+        salesUrl: String,
         password: {
             hash: { type: String, select: false },
             encryptedData: { type: String, select: false },
