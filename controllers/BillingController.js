@@ -9,18 +9,24 @@ export default new class BillingController extends CoreController {
     }
 
     handleSubscriptionUpdate = async (req, res) => {
-        const { status, name, admin_graphql_api_shop_id, admin_graphql_api_id } = req.body.app_subscription;
+        const { status, name, admin_graphql_api_shop_id, admin_graphql_api_id, created_at } = req.body.app_subscription;
         const tenant = await Tenant.findOne({ "shopify.shopId": admin_graphql_api_shop_id.replace("gid://shopify/Shop/", "") });
 
         if (!tenant) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
 
-        if (status.toLowerCase() === "active" || status.toLowerCase() === "trialing") {
-            tenant.updateOne({ 
+        console.log(status, name, admin_graphql_api_shop_id, admin_graphql_api_id);
+
+        if ( created_at < tenant.shopify.billing.periodStart ) {
+            return this.response(res, { status: HttpStatusCodes.SUCCESS });
+        }
+
+        if (status === "ACTIVE" || status === "TRIALING") {
+            await tenant.updateOne({ 
                 "shopify.billing.planKey": name.toUpperCase(),
                 "shopify.billing.subscription.id": admin_graphql_api_id,
                 "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS[name.toUpperCase()].TOKEN_LIMIT,
                 "shopify.billing.tokenUsed": 0,
-                "shopify.billing.periodStart": new Date().toISOString(),
+                "shopify.billing.periodStart": created_at,
                 "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
                 $unset: { 
                     "shopify.billing.pendingNonce": 1,
@@ -28,17 +34,17 @@ export default new class BillingController extends CoreController {
                 }
              });
         } else if (
-            status.toLowerCase() === "cancelled" || 
-            status.toLowerCase() === "expired" || 
-            status.toLowerCase() === "declined" || 
-            status.toLowerCase() === "pending" || 
-            status.toLowerCase() === "trial_will_end" || 
-            status.toLowerCase() === "trial_ended" || 
-            status.toLowerCase() === "unpaid" || 
-            status.toLowerCase() === "paused" || 
-            status.toLowerCase() === "suspended") {
+            status === "CANCELLED" || 
+            status === "EXPIRED" || 
+            status === "DECLINED" || 
+            status === "PENDING" || 
+            status === "TRIAL_WILL_END" || 
+            status === "TRIAL_ENDED" || 
+            status === "UNPAID" || 
+            status === "PAUSED" || 
+            status === "SUSPENDED") {
 
-            tenant.updateOne({
+            await tenant.updateOne({
                 "shopify.billing.isActive": false,
                 "shopify.billing.periodEnd": new Date().toISOString(),
                 $unset: { 
