@@ -21,7 +21,7 @@ export default class CoreCache extends CoreClass {
     get = async key => {
         const value = await this.redis.getCache(`${this.tenant.name}:${key}`);
 
-        if(value && value.includes('{')) {
+        if(value?.includes('{')) {
             return JSON.parse(value);
         } 
         
@@ -36,7 +36,11 @@ export default class CoreCache extends CoreClass {
         await this.redis.deleteCache(`${this.tenant.name}:${key}`);
     }
 
-    flush = async () => {
+    deleteAll = async _ => {
+        await this.redis.deleteCache(`${this.tenant.name}:*`);
+    }
+
+    flush = async _ => {
         await this.redis.flushCache();
     }
 

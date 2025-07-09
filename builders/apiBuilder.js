@@ -14,7 +14,7 @@ import proxyRouter from '../routes/proxy.js';
 import RequestMiddleware from '../middlewares/RequestMiddleware.js';
 import AuthMiddleware from '../middlewares/AuthMiddleware.js';
 import LogHelper from '../helpers/LogHelper.js';
-import ConfigMiddleware from '../middlewares/ConfigMiddleware.js';
+import shopifyGdprRouter from '../routes/shopify/gdpr.js';
 
 let logger = new LogHelper();
 
@@ -56,6 +56,7 @@ app.use(RequestMiddleware.setTraceId);
 app.use(`${routePrefix}/health`, healthRouter);
 app.use(`${routePrefix}/admin`, AuthMiddleware.isAdmin ,adminRouter);
 app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
+app.use(`${routePrefix}/shopify/gdpr`, shopifyGdprRouter);
 app.use(`${routePrefix}/billing`, billingRouter);
 app.use(`${routePrefix}/support/shopify`, AuthMiddleware.isShopifyAuthenticated, RequestMiddleware.setEcommerceIdAsShopify, supportRouter);
 app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, tenantRouter);

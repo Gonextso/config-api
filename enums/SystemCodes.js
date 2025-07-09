@@ -10,6 +10,13 @@ export default class {
         COMMUNITY: 'community',
         ENTERPRISE: 'enterprise'
     }
+    static PROCESS = {
+        SYNC_CUSTOMER: 'SYNC_CUSTOMER',
+        SYNC_ORDERS: 'SYNC_ORDERS',
+        SYNC_CANCEL_ORDERS: 'SYNC_CANCEL_ORDERS',
+        SYNC_FAILED_ORDERS: 'SYNC_FAILED_ORDERS',
+        TOKEN_CHECK: 'TOKEN_CHECK'
+    }
     static BILLING_PLANS = {
         BASIC: {
             KEY: 'basic',

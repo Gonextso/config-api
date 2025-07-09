@@ -6,6 +6,12 @@ import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 import ShopifyStoreBusiness from "../business/shopify/StoreBusiness.js";
 import SystemHelper from "../helpers/SystemHelper.js";
 import { isAxiosError } from "axios";
+import SuccessOrder from "../models/db/SuccessOrder.js";    
+import FailedOrder from "../models/db/FailedOrder.js";
+import RequestLog from "../models/db/RequestLog.js";
+import OrderSyncBatch from "../models/db/OrderSyncBatch.js";
+import NebimCache from "../cache/NebimCache.js";
+import ShopifyCache from "../cache/ShopifyCache.js";
 
 export default new class ShopifyAuthController extends CoreController {
     constructor() {
@@ -106,7 +112,9 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     handleGdprDataRequest = async (req, res) => {
-        console.log('GDPR customers/data_request webhook received:', req.body);
+        this.logger.info('GDPR customers/data_request webhook received:', req.body);
+
+
         return this.response(res, {
             isSuccess: true,
             status: HttpStatusCodes.SUCCESS,
@@ -116,7 +124,8 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     handleGdprCustomersRedact = async (req, res) => {
-        console.log('GDPR customers/redact webhook received:', req.body);
+        this.logger.info('GDPR customers/redact webhook received:', req.body);
+
         return this.response(res, {
             isSuccess: true,
             status: HttpStatusCodes.SUCCESS,
@@ -126,7 +135,57 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     handleGdprShopRedact = async (req, res) => {
-        console.log('GDPR shop/redact webhook received:', req.body);
+        this.logger.info('GDPR shop/redact webhook received:', req.body);
+
+        const { shopId, shopDomain } = req.body;
+
+        if (!shopId || !shopDomain) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing shopId or shopDomain in request body"
+            });
+        }
+
+        const tenant = await Tenant.findOne({
+            'shopify.shopId': shopId,
+            'shopify.domain': shopDomain
+        });
+
+        if (!tenant) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.NOT_FOUND,
+                info: "Tenant not found or already deleted"
+            });
+        }
+
+        const nebimCache = new NebimCache(tenant);
+        const shopifyCache = new ShopifyCache(tenant);
+
+        nebimCache.deleteAll();
+        shopifyCache.deleteAll();
+
+        SuccessOrder.deleteMany({
+            tenant: tenant._id
+        });
+
+        FailedOrder.deleteMany({
+            tenant: tenant._id
+        });
+
+        OrderSyncBatch.deleteMany({
+            tenant: tenant._id
+        });
+
+        RequestLog.deleteMany({
+            tenant: tenant._id
+        });
+
+        Tenant.deleteOne({
+            _id: tenant._id
+        });
+
         return this.response(res, {
             isSuccess: true,
             status: HttpStatusCodes.SUCCESS,
