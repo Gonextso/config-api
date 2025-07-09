@@ -1,8 +1,6 @@
-import SubscriptionBusiness from '../business/shopify/SubscriptionBusiness.js';
 import CoreController from '../core/CoreControler.js';
 import HttpStatusCodes from '../enums/HttpStatusCodes.js';
 import SystemCodes from '../enums/SystemCodes.js';
-import CryptoHelper from '../helpers/CryptoHelper.js';
 import Tenant from '../models/db/Tenant.js';
 
 export default new class BillingController extends CoreController {
@@ -10,67 +8,45 @@ export default new class BillingController extends CoreController {
         super();
     }
 
-    getPlans = async (_, res) => {
-        return this.response(res, {
-            content: SystemCodes.BILLING_PLANS,
-            status: HttpStatusCodes.SUCCESS
-        });
-    }
+    handleSubscriptionUpdate = async (req, res) => {
+        const { status, plan_handle, admin_graphql_api_shop_id } = req.body.app_subscription;
+        const tenant = await Tenant.findOne({ "shopify.shopId": admin_graphql_api_shop_id.replace("gid://shopify/Shop/", "") });
 
-    subscribeToPlan = async (req, res) => {
-        const { planKey, returnPath = "/billing/confirm" } = req.body;
-        const subscriptionBusiness = new SubscriptionBusiness(req.tenant);
+        if (!tenant) return this.response(res, { status: HttpStatusCodes.NOT_FOUND });
 
-        if (planKey === SystemCodes.BILLING_PLANS.BASIC.KEY) {
-            await tenant.updateOne({
-                "shopify.billing.planKey": planKey,
-                "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
-                "shopify.billing.tokenUsed": 0
-            });
+        if (status.toLowerCase() === "active" || status.toLowerCase() === "trialing") {
+            tenant.updateOne({ 
+                "shopify.billing.planKey": plan_handle,
+                "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS[plan_handle].TOKEN_LIMIT,
+                "shopify.billing.tokenUsed": 0,
+                "shopify.billing.periodStart": new Date().toISOString(),
+                "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
+                $unset: { 
+                    "shopify.billing.pendingNonce": 1,
+                    "shopify.billing.pendingPlanKey":  1 
+                }
+             });
+        } else if (
+            status.toLowerCase() === "cancelled" || 
+            status.toLowerCase() === "expired" || 
+            status.toLowerCase() === "declined" || 
+            status.toLowerCase() === "pending" || 
+            status.toLowerCase() === "trial_will_end" || 
+            status.toLowerCase() === "trial_ended" || 
+            status.toLowerCase() === "unpaid" || 
+            status.toLowerCase() === "paused" || 
+            status.toLowerCase() === "suspended") {
 
-            return this.response(res, {
-                status: HttpStatusCodes.SUCCESS
+            tenant.updateOne({
+                "shopify.billing.isActive": false,
+                "shopify.billing.periodEnd": new Date().toISOString(),
+                $unset: { 
+                    "shopify.billing.pendingNonce": 1,
+                    "shopify.billing.pendingPlanKey":  1 
+                }
             });
         }
 
-        return this.response(res, {
-            status: HttpStatusCodes.SUCCESS,
-            content: (await subscriptionBusiness.createSubscription(planKey, returnPath)).data
-        });
-    }
-
-    confirmCallback = async (req, res) => {
-        if (!CryptoHelper.validateShopifyHmac(req.query)) return this.response(res, { status: HttpStatusCodes.NOT_AUTHENTICATED });
-
-        const { tenant: tenantId, nonce, shop, host } = req.query;
-        const tenant = await Tenant
-            .findById(tenantId)
-            .select("+shopify.billing.pendingNonce +shopify.billing.pendingPlanKey");
-
-        if (!tenant || nonce !== tenant.shopify.billing.pendingNonce)
-            return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED })
-
-        const subscriptionBusiness = new SubscriptionBusiness(req.tenant);
-        const activeSubscription= subscriptionBusiness.getActiveSubscription()
-
-        if (!activeSubscription.id)
-            return this.response(res, { status: HttpStatusCodes.PAYMENT_REQUIRED })
-
-        const planKey = tenant.shopify.billing.pendingPlanKey
-
-        await tenant.updateOne({
-            "shopify.billing.planKey": planKey,
-            "shopify.billing.subscription.id": activeSubscriptionId,
-            "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS[planKey].TOKEN_LIMIT,
-            "shopify.billing.tokenUsed": 0,
-            "shopify.billing.periodStart": new Date().toISOString(),
-            "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
-            $unset: { 
-                "shopify.billing.pendingNonce": 1,
-                "shopify.billing.pendingPlanKey":  1 
-            }
-        });
-        const redirectUrl = `${activeSubscription.url}/app?shop=${shop}&host=${host}&billing=success`;
-        return res.redirect(302, redirectUrl);
+        return this.response(res, { status: HttpStatusCodes.SUCCESS });
     }
 }
