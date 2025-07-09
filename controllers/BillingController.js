@@ -20,7 +20,7 @@ export default new class BillingController extends CoreController {
 
         if (status === "ACTIVE" || status === "TRIALING") {
             await tenant.updateOne({ 
-                "shopify.billing.planKey": name.toUpperCase(),
+                "shopify.billing.planKey": name.toLowerCase(),
                 "shopify.billing.subscription.id": admin_graphql_api_id,
                 "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS[name.toUpperCase()].TOKEN_LIMIT,
                 "shopify.billing.tokenUsed": 0,
