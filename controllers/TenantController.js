@@ -34,8 +34,6 @@ export default new class TenantController extends CoreController {
                 this.throws('Connection cannot created to nebim', true)
             });
 
-            this.info("Nebim connection check success");
-
             tenant.nebim.user = response.data.content.UserName;
             tenant.nebim.userGroup = response.data.content.UserGroupCode;
 
