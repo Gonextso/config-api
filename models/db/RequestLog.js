@@ -10,6 +10,6 @@ export default mongoose.model('RequestLog', new mongoose.Schema({
     status: Number,
     responseTime: String,
     response: String,
-    traceId: { type: String, index: true, required: true },
+    traceId: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
 }));
