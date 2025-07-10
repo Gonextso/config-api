@@ -21,6 +21,8 @@ export default new class BillingController extends CoreController {
         }
 
         if (status === "ACTIVE" || status === "TRIALING") {
+            this.logger.info2(`Billing activated for ${tenant.name} with status ${status}`);
+
             await tenant.updateOne({ 
                 "shopify.billing.planKey": name.toUpperCase(),
                 "shopify.billing.subscription.id": admin_graphql_api_id,
@@ -42,6 +44,7 @@ export default new class BillingController extends CoreController {
             status === "UNPAID" || 
             status === "PAUSED" || 
             status === "SUSPENDED") {
+            this.logger.info2(`Billing changed for ${tenant.name} with status ${status}`);
 
             await tenant.updateOne({
                 "shopify.billing.isActive": false,
@@ -52,6 +55,8 @@ export default new class BillingController extends CoreController {
                 }
             });
         } else if (status === "CANCELLED") {
+            this.logger.info2(`Billing cancelled for ${tenant.name}`);
+            
             await tenant.updateOne({
                 "shopify.billing.isActive": true,
                 "shopify.billing.planKey": SystemCodes.BILLING_PLANS.BASIC.KEY,
@@ -65,6 +70,8 @@ export default new class BillingController extends CoreController {
                     "shopify.billing.pendingPlanKey":  1 
                 }
             });
+        } else {
+            this.logger.info2(`Billing got no action for ${tenant.name} with status ${status}`);
         }
 
         return this.response(res, { status: HttpStatusCodes.SUCCESS });
