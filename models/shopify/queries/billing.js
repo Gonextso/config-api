@@ -5,7 +5,10 @@ export default {
         launchUrl
         activeSubscriptions {
           id
+          name
           status
+          currentPeriodEnd
+          createdAt
         }
       }
     }`

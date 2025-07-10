@@ -12,6 +12,8 @@ import RequestLog from "../models/db/RequestLog.js";
 import OrderSyncBatch from "../models/db/OrderSyncBatch.js";
 import NebimCache from "../cache/NebimCache.js";
 import ShopifyCache from "../cache/ShopifyCache.js";
+import SystemCodes from "../enums/SystemCodes.js";
+import ShopifyBillingBusiness from "../business/shopify/BillingBusiness.js";
 
 export default new class ShopifyAuthController extends CoreController {
     constructor() {
@@ -77,6 +79,9 @@ export default new class ShopifyAuthController extends CoreController {
     
                     return result;
                 }
+
+                const billingBusiness = new ShopifyBillingBusiness(newTenant);
+                const activeSubscription = await billingBusiness.getActiveSubscription();
         
                 const tenantDto = {
                     name: newTenant.name,
@@ -85,7 +90,20 @@ export default new class ShopifyAuthController extends CoreController {
                         domain: shop.domain ?? `${newTenant.name}.myshopify.com`,
                         shopId: shop.id,
                         customerEmail: shop.customer_email,
-                        apiKey: {...CryptoHelper.encrypt(accessToken)}
+                        apiKey: {...CryptoHelper.encrypt(accessToken)},
+                        billing: activeSubscription ? {
+                            planKey: SystemCodes.BILLING_PLANS[activeSubscription.name.toUpperCase()]?.KEY ?? SystemCodes.BILLING_PLANS.BASIC.KEY,
+                            subscription: {
+                                id: activeSubscription.id ?? ""
+                            },
+                            tokenLimit: SystemCodes.BILLING_PLANS[activeSubscription.name.toUpperCase()]?.TOKEN_LIMIT ?? SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
+                            tokenUsed: 0,
+                            periodStart: activeSubscription.createdAt,
+                            periodEnd: activeSubscription.currentPeriodEnd,
+                            isBlocked: activeSubscription.status !== "ACTIVE",
+                            pendingNonce: "",
+                            pendingPlanKey: ""
+                        } : {}
                     },
                     apiKey: "UNUSED",
                 }
