@@ -22,7 +22,7 @@ export default new class TenantController extends CoreController {
         const updateData = req.body;
         const tenant = await Tenant.findById(req.tenant._id);
 
-        if (updateData.nebim && (updateData.nebim.password || updateData.nebim.host || updateData.nebim.user || updateData.nebim.userGroup  )) {
+        if (updateData.nebim && (updateData.nebim.password || updateData.nebim.host || updateData.nebim.user || updateData.nebim.userGroup )) {
             const response = await this.httpRequest.post(`${process.env.INTEGRATION_API_HOST}/nebim/check`, {
                 ...tenant.nebim,
                 ...updateData.nebim
@@ -33,6 +33,8 @@ export default new class TenantController extends CoreController {
             }).catch(_ => {
                 this.throws('Connection cannot created to nebim', true)
             });
+
+            this.info("Nebim connection check success");
 
             tenant.nebim.user = response.data.content.UserName;
             tenant.nebim.userGroup = response.data.content.UserGroupCode;
