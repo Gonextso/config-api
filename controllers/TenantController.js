@@ -41,7 +41,7 @@ export default new class TenantController extends CoreController {
             tenant.nebim.order.store = response.data.content.StoreCode ?? "";
             tenant.nebim.order.company = response.data.content.CompanyCode ?? "";
 
-            if (updateData.nebim.password) updateData.nebim.password = CryptoHelper.encrypt(updateData.nebim.password);
+            if (updateData.nebim.password) tenant.nebim.password = CryptoHelper.encrypt(updateData.nebim.password);
         }
 
         if (updateData.shopify && updateData.shopify.apiKey) delete updateData.shopify.apiKey;
