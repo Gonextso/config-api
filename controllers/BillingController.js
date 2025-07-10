@@ -10,7 +10,7 @@ export default new class BillingController extends CoreController {
 
     handleSubscriptionUpdate = async (req, res) => {
         const { status, name, admin_graphql_api_shop_id, admin_graphql_api_id, created_at } = req.body.app_subscription;
-        const tenant = await Tenant.findOne({ "shopify.shopId": admin_graphql_api_shop_id.replace("gid://shopify/Shop/", "") });
+        const tenant = await Tenant.findOne({ "shopify.shopId": admin_graphql_api_shop_id.replace("gid://shopify/Shop/", "").replace("gid:\\/\\/shopify\\/Shop\\/", "") });
 
         if (!tenant) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
 
