@@ -80,7 +80,7 @@ export default new class ShopifyAuthController extends CoreController {
                     return result;
                 }
 
-                const billingBusiness = new ShopifyBillingBusiness({ shopify: { name: newTenant.name } });
+                const billingBusiness = new ShopifyBillingBusiness({ shopify: { name: newTenant.name, decryptedApiKey: accessToken } });
                 const activeSubscription = await billingBusiness.getActiveSubscription();
         
                 const tenantDto = {
