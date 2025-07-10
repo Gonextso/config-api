@@ -12,6 +12,8 @@ export default new class BillingController extends CoreController {
         const { status, name, admin_graphql_api_shop_id, admin_graphql_api_id, created_at } = req.body.app_subscription;
         const tenant = await Tenant.findOne({ "shopify.shopId": admin_graphql_api_shop_id.replace("gid://shopify/Shop/", "").replace("gid:\\/\\/shopify\\/Shop\\/", "") });
 
+        this.logger.info2(`Billing changed for ${tenant.name} with status ${status} and plan ${name}`);
+
         if (!tenant) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
 
         if ( created_at < tenant.shopify.billing.periodStart ) {
