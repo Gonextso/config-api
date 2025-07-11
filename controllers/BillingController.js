@@ -17,6 +17,7 @@ export default new class BillingController extends CoreController {
         if (!tenant) return this.response(res, { status: HttpStatusCodes.BAD_REQUEST });
 
         if ( created_at < tenant.shopify.billing.periodStart ) {
+            this.logger.info2(`Billing got no action for ${tenant.name} with status ${status} and plan ${name}. Period start is before the current period start. ${created_at} < ${tenant.shopify.billing.periodStart}`);
             return this.response(res, { status: HttpStatusCodes.SUCCESS });
         }
 
