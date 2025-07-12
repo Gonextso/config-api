@@ -49,7 +49,8 @@ export default new class BillingController extends CoreController {
 
             await tenant.updateOne({
                 "shopify.billing.isActive": false,
-                "shopify.billing.periodEnd": new Date().toISOString(),
+                "shopify.billing.periodStart": new Date().toISOString(),
+                "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
                 $unset: { 
                     "shopify.billing.pendingNonce": 1,
                     "shopify.billing.pendingPlanKey":  1 
