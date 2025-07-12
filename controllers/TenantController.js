@@ -54,8 +54,6 @@ export default new class TenantController extends CoreController {
             });
 
         ObjectHelper.deepMerge(tenant, updateData);
-            
-        this.logger.info2(`Tenant ${tenant.name} updated with data ${JSON.stringify(updateData)}`);
 
         await tenant.save();
 
