@@ -57,6 +57,8 @@ export default new class ShopifyAuthController extends CoreController {
     
                         return result;
                     }
+
+                    return { ...result, status: HttpStatusCodes.SERVER_ERROR, info: error.message };
                 }
         
                 if (!shop) {
