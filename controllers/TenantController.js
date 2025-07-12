@@ -22,7 +22,7 @@ export default new class TenantController extends CoreController {
         const updateData = req.body;
         const tenant = await Tenant.findById(req.tenant._id);
 
-        if (updateData.nebim && (updateData.nebim.password || updateData.nebim.host || updateData.nebim.user || updateData.nebim.userGroup )) {
+        if (updateData.nebim && (updateData.nebim.password || (updateData.nebim.host && updateData.nebim.host !== tenant.nebim.host) || (updateData.nebim.user && updateData.nebim.user !== tenant.nebim.user) || (updateData.nebim.userGroup && updateData.nebim.userGroup !== tenant.nebim.userGroup))) {
             const response = await this.httpRequest.post(`${process.env.INTEGRATION_API_HOST}/nebim/check`, {
                 ...tenant.nebim,
                 ...updateData.nebim
