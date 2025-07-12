@@ -42,7 +42,6 @@ app.use(morgan(function (tokens, req, res) {
         tokens.status(req, res),
         `${tokens.res(req, res, 'content-length')}-`,
         `${tokens['response-time'](req, res)}ms`,
-        `| Body: ${req.rawBody}`,
         tokens['user-agent'](req, res)
     ].join(' '));
 }));
