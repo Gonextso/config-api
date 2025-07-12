@@ -55,6 +55,8 @@ export default new class TenantController extends CoreController {
 
         ObjectHelper.deepMerge(tenant, updateData);
 
+        console.log(tenant);
+
         await tenant.save();
 
         return this.response(res, {
