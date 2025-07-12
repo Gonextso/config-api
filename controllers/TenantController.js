@@ -31,7 +31,7 @@ export default new class TenantController extends CoreController {
                     'x-tenant-id': tenant._id
                 }
             }).catch(_ => {
-                this.throws('Connection cannot created to nebim', true)
+                this.throws('Connection cannot be established to Nebim', true)
             });
 
             tenant.nebim.user = response.data.content.UserName;
