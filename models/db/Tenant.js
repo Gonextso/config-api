@@ -4,7 +4,6 @@ import SystemCodes from "../../enums/SystemCodes.js";
 
 export default mongoose.model('Tenant', new mongoose.Schema({
     name: { type: String, required: true },
-    apiKey: { type: String, unique: true, required: true, select: false },
     shopify: {
         apiKey: {
             hash: { type: String, select: false },
