@@ -131,7 +131,7 @@ export default new class ShopifyAuthController extends CoreController {
     }
 
     handleUninstalled = async (req, res) => {
-        this.logger.info('Shopify uninstalled webhook received:', req.body);
+        this.logger.info(`Shopify uninstalled webhook received: ${JSON.stringify(req.body)}`);
 
         const { id } = req.body;
 
@@ -154,6 +154,8 @@ export default new class ShopifyAuthController extends CoreController {
                 info: "Tenant not found"
             });
         }
+
+        this.logger.info(`Uninstalling tenant: ${tenant.name} - ${tenant.shopify.shopId}`);
 
         const nebimCache = new NebimCache(tenant);
         const shopifyCache = new ShopifyCache(tenant);
@@ -184,7 +186,7 @@ export default new class ShopifyAuthController extends CoreController {
         return this.response(res, {
             isSuccess: true,
             status: HttpStatusCodes.SUCCESS,
-            info: "GDPR shop/redact webhook received",
+            info: "Uninstalled webhook received",
             content: req.body
         });
     }
