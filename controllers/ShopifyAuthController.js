@@ -106,8 +106,7 @@ export default new class ShopifyAuthController extends CoreController {
                             pendingNonce: "",
                             pendingPlanKey: ""
                         } : {}
-                    },
-                    apiKey: "UNUSED",
+                    }
                 }
 
                 tenant = new Tenant(tenantDto);
