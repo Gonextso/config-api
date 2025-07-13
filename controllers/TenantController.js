@@ -3,6 +3,12 @@ import Tenant from '../models/db/Tenant.js';
 import CryptoHelper from '../helpers/CryptoHelper.js';
 import HttpStatusCodes from '../enums/HttpStatusCodes.js';
 import ObjectHelper from '../helpers/ObjectHelper.js';
+import NebimCache from '../cache/NebimCache.js';
+import ShopifyCache from '../cache/ShopifyCache.js';
+import SuccessOrder from '../models/db/SuccessOrder.js';
+import FailedOrder from '../models/db/FailedOrder.js';
+import OrderSyncBatch from '../models/db/OrderSyncBatch.js';
+import RequestLog from '../models/db/RequestLog.js';
 
 export default new class TenantController extends CoreController {
     constructor() {
@@ -57,6 +63,49 @@ export default new class TenantController extends CoreController {
 
         return this.response(res, {
             content: tenant,
+            status: HttpStatusCodes.SUCCESS
+        });
+    }
+
+    deleteTenant = async (req, res) => {
+        const tenant = await Tenant.findById(req.tenant._id);
+
+        if (!tenant) return this.response(res, {
+            status: HttpStatusCodes.BAD_REQUEST,
+            info: `Tenant not found for deletion: ${req.tenant._id}`
+        });
+
+        this.logger.info(`Deleting tenant: ${tenant.name} - ${tenant.shopify.shopId}`);
+
+        const nebimCache = new NebimCache(tenant);
+        const shopifyCache = new ShopifyCache(tenant);
+
+        await nebimCache.deleteAll();
+        await shopifyCache.deleteAll();
+
+        await SuccessOrder.deleteMany({
+            tenant: tenant._id
+        });
+
+        await FailedOrder.deleteMany({
+            tenant: tenant._id
+        });
+
+        await OrderSyncBatch.deleteMany({
+            tenant: tenant._id
+        });
+
+        await RequestLog.deleteMany({
+            tenant: tenant._id
+        });
+
+        await Tenant.deleteOne({
+            _id: tenant._id
+        });
+        
+        this.logger.info(`Tenant deleted: ${tenant.name} - ${tenant.shopify.shopId}`);
+
+        return this.response(res, {
             status: HttpStatusCodes.SUCCESS
         });
     }

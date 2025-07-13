@@ -5,5 +5,6 @@ const router = express.Router();
 
 router.get("/", TenantController.getTenant);
 router.patch("/", TenantController.patchTenant);
+router.delete("/", TenantController.deleteTenant);
 
 export default router;
