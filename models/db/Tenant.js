@@ -22,6 +22,16 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                 id: String,
                 lineId: String //? It can be used in feature for mixed sub models or shopify quota usage. we are using our own token mechanism
             },
+            limits: {
+                order: {
+                    limit: { type: Number, default: 10 },
+                    used: { type: Number, default: 0 }
+                },
+                product_details: {
+                    limit: { type: Number, default: 1000 },
+                    used: { type: Number, default: 0 }
+                }
+            },
             tokenLimit: { type: Number, default: 5 },
             tokenUsed: { type: Number, default: 0 },
             periodStart: {
