@@ -12,5 +12,6 @@ export default mongoose.model('FailedOrder', new mongoose.Schema({
     tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
     syncBatchId: { type: mongoose.Schema.Types.ObjectId, ref: 'OrderSyncLog', required: true },
     traceId: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
 }));

@@ -22,8 +22,10 @@ export default new class BillingController extends CoreController {
             await tenant.updateOne({ 
                 "shopify.billing.planKey": name.toUpperCase(),
                 "shopify.billing.subscription.id": admin_graphql_api_id,
+                "shopify.billing.limits.order.limit": SystemCodes.BILLING_PLANS[name.toUpperCase()].LIMITS.ORDER,
+                "shopify.billing.limits.product_details.limit": SystemCodes.BILLING_PLANS[name.toUpperCase()].LIMITS.PRODUCT_DETAILS,
                 "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS[name.toUpperCase()].TOKEN_LIMIT,
-                "shopify.billing.tokenUsed": 0,
+                "shopify.billing.tokenUsed": created_at > tenant.shopify.billing.periodEnd ? 0 : tenant.shopify.billing.tokenUsed,
                 "shopify.billing.periodStart": created_at,
                 "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
                 $unset: { 
@@ -58,8 +60,10 @@ export default new class BillingController extends CoreController {
                 "shopify.billing.isActive": true,
                 "shopify.billing.planKey": SystemCodes.BILLING_PLANS.BASIC.KEY,
                 "shopify.billing.subscription.id": null,
+                "shopify.billing.limits.order.limit": SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
+                "shopify.billing.limits.product_details.limit": SystemCodes.BILLING_PLANS.BASIC.LIMITS.PRODUCT_DETAILS,
                 "shopify.billing.tokenLimit": SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
-                "shopify.billing.tokenUsed": 0,
+                "shopify.billing.tokenUsed": created_at > tenant.shopify.billing.periodEnd ? 0 : tenant.shopify.billing.tokenUsed,
                 "shopify.billing.periodStart": new Date().toISOString(),
                 "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
                 $unset: { 
