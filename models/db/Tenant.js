@@ -113,7 +113,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         host: String,
         user: String,
         userGroup: String,
-        salesUrl: String,
+        salesUrl: String, //TODO: check if this is needed, or if it can be derived from shopify.domain
         password: {
             hash: { type: String, select: false },
             encryptedData: { type: String, select: false },
@@ -140,8 +140,8 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         procNames: {
             product: {
                 details: { type: String, default: "sp_INV_GetProductDetails" },
-                inventory: { type: String, default: "sp_INV_GetProductPrice" },
-                price: { type: String, default: "sp_INV_GetProductInventory" },
+                inventory: { type: String, default: "sp_INV_GetProductInventory" },
+                price: { type: String, default: "sp_INV_GetProductPrice" },
             },
             customer: {
                 check: { type: String, default: "qry_B2C_GetCustomer" },
