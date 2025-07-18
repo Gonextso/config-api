@@ -90,6 +90,17 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                         },
                         isActive: { type: Boolean, default: false }
                     },
+                    status: {
+                        interval: { type: String, default: "0 0 * * *" },
+                        startDate: {
+                            type: String,
+                            default: function () {
+                                const interval = moment.duration(1, "days");
+                                return moment().subtract(interval).toISOString();
+                            }
+                        },
+                        isActive: { type: Boolean, default: false }
+                    }
                 },
             },
             redention: {
@@ -145,6 +156,9 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             },
             customer: {
                 check: { type: String, default: "qry_B2C_GetCustomer" },
+            },
+            order: {
+                status: { type: String, default: "sp_INV_OrderStatus" },
             },
             defaults: {
                 addressCodes: { type: String, default: "sp_INV_GetAddressList" },

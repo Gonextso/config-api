@@ -16,6 +16,7 @@ export default mongoose.model('SuccessOrder', new mongoose.Schema({
         quantity: Number
     }],
     isCancelled: { type: Boolean, default: false },
+    isShipped: { type: Boolean, default: false },
     isPartiallyCancelled: { type: Boolean, default: false },
     erp: { type: String, required: true, enum: Object.keys(SystemCodes.ERP) },
     ecommerce: { type: String, required: true, enum: Object.keys(SystemCodes.ECOMMERCE) },
