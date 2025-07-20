@@ -12,6 +12,34 @@ export default class {
         SYNC_FAILED_ORDERS: 'SYNC_FAILED_ORDERS',
         TOKEN_CHECK: 'TOKEN_CHECK'
     }
+    static NEBIM_ORDER_STATUS = {
+        ON_CARGO: 'ON-CARGO',
+        CANCELLED: 'CANCELLED',
+        INVOICED: 'INVOICED',
+        SHIPPED: 'SHIPPED',
+        INVOICE_RETURNED: 'INVOICE-RETURNED'
+    }
+    static NEBIM_SKU_FIELDS = {
+        ITEM_CODE: 'ItemCode',
+        COLOR_CODE: 'ColorCode',
+        ITEM_DIM1_CODE: 'ItemDim1Code',
+        ITEM_DIM2_CODE: 'ItemDim2Code',
+        ITEM_DIM3_CODE: 'ItemDim3Code'
+    }
+    static SEPARATORS = {
+        DASH: '-',
+        UNDERSCORE: '_',
+        COLON: ':',
+        DOT: '.',
+        SEMICOLON: ';',
+        COMMA: ',',
+    }
+    static DEFINITIONS = {
+        NO_TRACKING_NUMBER: 'NO_TRACKING_NUMBER'
+    }
+    static PREFIXES = {
+        SHOPIFY_FULFILLMENT_ORDER_IDS: 'shopify_fulfillment_order_ids'
+    }
     static LIMIT_TYPE = {
         ORDER: 'order',
         PRODUCT_DETAILS: 'product_details'
