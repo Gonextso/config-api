@@ -117,6 +117,13 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                 }
             }
         },
+        skuFields: {
+            nebim: {
+                fields: { type: [String], default: [SystemCodes.NEBIM_SKU_FIELDS.ITEM_CODE, SystemCodes.NEBIM_SKU_FIELDS.COLOR_CODE, SystemCodes.NEBIM_SKU_FIELDS.ITEM_DIM1_CODE], enum: Object.values(SystemCodes.NEBIM_SKU_FIELDS) },
+                separator: { type: String, default: SystemCodes.SEPARATORS.DASH, enum: Object.values(SystemCodes.SEPARATORS) }
+            }
+        },
+        isColorOptionFirst: { type: Boolean, default: true },
         isEnterprise: { type: Boolean, default: false },
         isActive: { type: Boolean, default: true }
     },
