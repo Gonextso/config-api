@@ -27,6 +27,7 @@ export default class {
         ITEM_DIM3_CODE: 'ItemDim3Code'
     }
     static SEPARATORS = {
+        NONE: '',
         DASH: '-',
         UNDERSCORE: '_',
         COLON: ':',
