@@ -67,11 +67,11 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                         isActive: { type: Boolean, default: false }
                     },
                     details: {
-                        interval: { type: String, default: "*/5 * * * *" },
+                        interval: { type: String, default: "0 0 * * *" },
                         startDate: {
                             type: String,
                             default: function () {
-                                const interval = moment.duration(5, "minutes");
+                                const interval = moment.duration(1, "days");
                                 return moment().subtract(interval).toISOString();
                             }
                         },
@@ -80,22 +80,22 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                 },
                 order: {
                     create_and_cancel: {
-                        interval: { type: String, default: "*/5 * * * *" },
+                        interval: { type: String, default: "*/30 * * * *" },
                         startDate: {
                             type: String,
                             default: function () {
-                                const interval = moment.duration(5, "minutes");
+                                const interval = moment.duration(30, "minutes");
                                 return moment().subtract(interval).toISOString();
                             }
                         },
                         isActive: { type: Boolean, default: false }
                     },
                     status: {
-                        interval: { type: String, default: "*/5 * * * *"  },
+                        interval: { type: String, default: "0 0 * * *" },
                         startDate: {
                             type: String,
                             default: function () {
-                                const interval = moment.duration(5, "minutes");
+                                const interval = moment.duration(1, "days");
                                 return moment().subtract(interval).toISOString();
                             }
                         },
@@ -105,11 +105,11 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             },
             redention: {
                 logs: {
-                    interval: { type: String, default: "*/5 * * * *"  },
+                    interval: { type: String, default: "0 0 * * 7" },
                     startDate: {
                         type: String,
                         default: function () {
-                            const interval = moment.duration(5, "minutes");
+                            const interval = moment.duration(7, "days");
                             return moment().subtract(interval).toISOString();
                         }
                     },
