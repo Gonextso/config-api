@@ -217,9 +217,9 @@ export default new class ShopifyAuthController extends CoreController {
     handleGdprShopRedact = async (req, res) => {
         this.logger.info('GDPR shop/redact webhook received:', req.body);
 
-        const { shopId, shopDomain } = req.body;
+        const { shop_id, shop_domain } = req.body;
 
-        if (!shopId || !shopDomain) {
+        if (!shop_id || !shop_domain) {
             return this.response(res, {
                 isSuccess: false,
                 status: HttpStatusCodes.BAD_REQUEST,
@@ -228,8 +228,8 @@ export default new class ShopifyAuthController extends CoreController {
         }
 
         const tenant = await Tenant.findOne({
-            'shopify.shopId': shopId,
-            'shopify.domain': shopDomain
+            'shopify.shopId': shop_id,
+            'shopify.domain': shop_domain
         });
 
         if (!tenant) {
