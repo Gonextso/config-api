@@ -105,11 +105,11 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             },
             redention: {
                 logs: {
-                    interval: { type: String, default: "0 0 * * 7" },
+                    interval: { type: String, default: "0 0 * * *" },
                     startDate: {
                         type: String,
                         default: function () {
-                            const interval = moment.duration(7, "days");
+                            const interval = moment.duration(1, "days");
                             return moment().subtract(interval).toISOString();
                         }
                     },
