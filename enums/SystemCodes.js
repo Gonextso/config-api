@@ -52,6 +52,9 @@ export default class {
             LIMITS: {
                 ORDER: 10,
                 PRODUCT_DETAILS: 1000
+            },
+            REDENTION: {
+                LOG: 1
             }
         },
         COMMUNITY: {
@@ -60,6 +63,9 @@ export default class {
             LIMITS: {
                 ORDER: 500,
                 PRODUCT_DETAILS: 5000
+            },
+            REDENTION: {
+                LOG: 5
             }
         },
         ENTERPRISE: {
@@ -68,6 +74,9 @@ export default class {
             LIMITS: {
                 ORDER: 0,
                 PRODUCT_DETAILS: 0
+            },
+            REDENTION: {
+                LOG: 15
             }
         }
     }
