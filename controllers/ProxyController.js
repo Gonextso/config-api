@@ -15,7 +15,9 @@ export default new class ProxyController extends CoreController {
             const path = Array.isArray(req.params.splat) ? req.params.splat.join('/') : (req.params.splat || '');
             const url = `${process.env.INTEGRATION_API_HOST}/${path}`;
             const ALLOWED_PATHS = [
-                'shopify/nebim/order/sync_failed'
+                'shopify/nebim/order/sync_failed',
+                'shopify/nebim/customer/consent/gsm',
+                'shopify/nebim/customer/consent/email'
             ];
 
             if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.toLocaleLowerCase() === allowedPath)) {
