@@ -143,7 +143,10 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         },
         customer: {
             phoneType: { type: String, default: "7" },
-            addressType: { type: String, default: "1" }
+            addressType: { type: String, default: "1" },
+            confirmationFormTypeCode: { type: String, default: "" },
+            confirmationFormStatusCode: { type: String, default: "" },
+            consentSource: { type: String, default: "HS_WEB" },
         },
         order: {
             deliveryCompany: String,
