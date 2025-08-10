@@ -235,7 +235,7 @@ export default new class ShopifyAuthController extends CoreController {
         if (!tenant) {
             return this.response(res, {
                 isSuccess: false,
-                status: HttpStatusCodes.NOT_FOUND,
+                status: HttpStatusCodes.SUCCESS,
                 info: "Tenant not found or already deleted"
             });
         }
