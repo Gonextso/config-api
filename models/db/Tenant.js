@@ -147,6 +147,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             confirmationFormTypeCode: { type: String, default: "" },
             confirmationFormStatusCode: { type: String, default: "" },
             consentSource: { type: String, default: "HS_WEB" },
+            inactivationReasonCode: { type: String, default: "" }
         },
         order: {
             deliveryCompany: String,
