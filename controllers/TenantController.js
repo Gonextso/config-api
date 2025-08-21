@@ -36,7 +36,11 @@ export default new class TenantController extends CoreController {
                 headers: {
                     'x-tenant-id': tenant._id
                 }
-            }).catch(_ => this.throws('Connection cannot be established to Nebim', true));
+            }).catch(error => {
+                const info = error?.isAxiosError ? error.response?.data?.info : null;
+                const message = info ? `Nebim V3 bağlantı hatası: "${info}"` : "Nebim V3'e bağlanırken hata oluştu";
+                this.throws(message, true);
+            });
 
             tenant.nebim.user = response.data.content.UserName;
             tenant.nebim.userGroup = response.data.content.UserGroupCode;

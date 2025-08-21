@@ -8,10 +8,10 @@ export default class ShopifyStoreBusiness extends CoreClass {
         this.api = new ShopifyGqlAPI(tenant);
     }
 
+    //TODO: Depreciated not used
     checkStore = async _ => {
-        await this.api.query(storeQueries.dummy);
+        return (await this.api.query(storeQueries.dummy)).data.publications.nodes.length > 0;
     }
-
 
     getShop = async (shop, accessToken) => await this.api.getShopInfo(shop, accessToken);
 }
