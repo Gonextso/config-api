@@ -26,6 +26,9 @@ query {
     dummy: `
 query Publications {
     publications(first: 1) {
+        nodes {
+            id
+        }
     }
 }`,
 }

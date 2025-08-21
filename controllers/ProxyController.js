@@ -17,7 +17,9 @@ export default new class ProxyController extends CoreController {
             const ALLOWED_PATHS = [
                 'shopify/nebim/order/sync_failed',
                 'shopify/nebim/customer/consent/gsm',
-                'shopify/nebim/customer/consent/email'
+                'shopify/nebim/customer/consent/email',
+                'cache/get',
+                'cache/delete'
             ];
 
             if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.toLocaleLowerCase() === allowedPath)) {

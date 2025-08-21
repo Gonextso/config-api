@@ -3,7 +3,6 @@ import CryptoHelper from "../helpers/CryptoHelper.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
 import Tenant from "../models/db/Tenant.js";
-import ShopifyStoreBusiness from "../business/shopify/StoreBusiness.js";
 import { isAxiosError } from "axios";
 import mongoose from "mongoose";
 
@@ -38,17 +37,6 @@ export default new class AuthMiddleware extends CoreController {
 
         req.tenant = tenant;
         req.tenant.shopify.decryptedApiKey = CryptoHelper.decrypt(tenant.shopify.apiKey);
-
-        const shopifyAccessService = new ShopifyStoreBusiness(new ShopifyGqlAPI(req.tenant));
-
-        try {
-            await shopifyAccessService.checkStore();
-        } catch (error) {
-            if (isAxiosError(error) && [HttpStatusCodes.UNAUTHORIZED, HttpStatusCodes.NOT_AUTHENTICATED].some(x => x.code === error.status)) return this.response(res, {
-                status: { code: error.status, message: error.message },
-                info: `Shopify API Error: ${error.response.data.errors}. Error occured while authenticating via Shopify.`
-            })
-        }
 
         return next();
     }
