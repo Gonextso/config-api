@@ -2,9 +2,9 @@ import CoreController from "../core/CoreControler.js";
 import CryptoHelper from "../helpers/CryptoHelper.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
-import Tenant from "../models/db/Tenant.js";
+import Tenant from "../models/db/postgres/Tenant.js";
 import { isAxiosError } from "axios";
-import mongoose from "mongoose";
+import UuidHelper from "../helpers/UuidHelper.js";
 
 export default new class AuthMiddleware extends CoreController {
     constructor() {
@@ -20,13 +20,12 @@ export default new class AuthMiddleware extends CoreController {
     }
 
     isShopifyAuthenticated = async (req, res, next) => {
-        const apiKey = CryptoHelper.hashKey(req.headers['x-api-key'] ?? "");
+        const rawApiKey = req.headers['x-api-key'] ?? "";
+        const apiKey = CryptoHelper.hashKey(rawApiKey);
+        
         const tenant = await Tenant.findOne({
             'shopify.apiKey.hash': apiKey
-        })
-            .select('+shopify.apiKey.encryptedData')
-            .select('+shopify.apiKey.iv')
-            .select('+shopify.apiKey.authTag');
+        });
 
         if (!tenant) {
             return this.response(res, {
@@ -52,10 +51,10 @@ export default new class AuthMiddleware extends CoreController {
             });
         }
 
-        if (!mongoose.isValidObjectId(tenantId)) {
+        if (!UuidHelper.isValidUuid(tenantId)) {
             return this.response(res, {
                 status: HttpStatusCodes.BAD_REQUEST,
-                info: "Invalid mongo object id format.",
+                info: "Invalid UUID format.",
             });
         }
 
@@ -63,11 +62,7 @@ export default new class AuthMiddleware extends CoreController {
             status: HttpStatusCodes.UNAUTHORIZED
         })
 
-        const tenant = await Tenant.findById(tenantId)
-            .select('+shopify.apiKey.encryptedData')
-            .select('+shopify.apiKey.iv')
-            .select('+shopify.apiKey.authTag')
-            .lean();
+        const tenant = await Tenant.findById(tenantId);
 
         if (!tenant) {
             return this.response(res, {

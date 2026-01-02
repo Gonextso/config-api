@@ -1,0 +1,327 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["tenants", "billings", "sync", "logs", "auths", "defaults", "schedules"]
+}
+
+// Enums
+enum ProcessType {
+  SYNC_CUSTOMER
+  SYNC_ORDERS
+  SYNC_CANCEL_ORDERS
+  SYNC_FAILED_ORDERS
+  TOKEN_CHECK
+
+  @@schema("tenants")
+}
+
+enum PlanKey {
+  BASIC
+  COMMUNITY
+  ENTERPRISE
+
+  @@schema("tenants")
+}
+
+// Tenants Schema
+model TenantInfo {
+  id          String   @id @default(uuid())
+  name        String
+  isActive    Boolean  @default(true) @map("is_active")
+  isTestStore Boolean  @default(false) @map("is_test_store")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  shopify     TenantShopify?
+  nebim       TenantNebim?
+  shopifyAuth AuthShopify?
+  nebimAuth   AuthNebim?
+  pricing     PricingInfo?
+  schedules   ScheduleTenant?
+  syncBatches SyncBatch[]
+  failedOrders SyncFailedOrder[]
+  successOrders SyncSuccessOrder[]
+  requestLogs RequestLog[]
+
+  @@map("info")
+  @@schema("tenants")
+}
+
+model TenantShopify {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique @map("tenant_id")
+  name                  String?
+  domain                String?  @unique
+  shopId                String?  @unique @map("shop_id")
+  customerEmail         String?  @map("customer_email")
+  isInventoryTracking   Boolean  @default(true) @map("is_inventory_tracking")
+  isColorOptionFirst    Boolean  @default(true) @map("is_color_option_first")
+  isEnterprise          Boolean  @default(false) @map("is_enterprise")
+  isActive              Boolean  @default(true) @map("is_active")
+  skuFieldsNebim        String[] @map("sku_fields_nebim")
+  skuFieldsSeparator    String   @default("-") @map("sku_fields_separator")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("shopify")
+  @@schema("tenants")
+  @@index([tenantId])
+  @@index([domain])
+  @@index([shopId])
+}
+
+model TenantNebim {
+  id                            String   @id @default(uuid())
+  tenantId                      String   @unique @map("tenant_id")
+  host                          String?
+  user                          String?
+  userGroup                     String?  @map("user_group")
+  salesUrl                      String?  @map("sales_url")
+  isActive                      Boolean  @default(true) @map("is_active")
+  productCategoryKeysFrom       String[] @map("product_category_keys_from")
+  customerPhoneType             String   @default("7") @map("customer_phone_type")
+  customerAddressType           String   @default("1") @map("customer_address_type")
+  customerConfirmationFormTypeCode    String?  @map("customer_confirmation_form_type_code")
+  customerConfirmationFormStatusCode String?  @map("customer_confirmation_form_status_code")
+  customerConsentSource         String   @default("HS_WEB") @map("customer_consent_source")
+  customerInactivationReasonCode String? @map("customer_inactivation_reason_code")
+  orderDeliveryCompany          String?  @map("order_delivery_company")
+  orderPosTerminalId            Int      @default(1) @map("order_pos_terminal_id")
+  orderCreditCardType           String?  @map("order_credit_card_type")
+  orderOffice                   String?  @map("order_office")
+  orderStore                    String?  @map("order_store")
+  orderCompany                  String?  @map("order_company")
+  orderWarehouse                String?  @map("order_warehouse")
+  orderCancelReason             String?  @map("order_cancel_reason")
+  procProductDetails            String   @default("sp_INV_GetProductDetails") @map("proc_product_details")
+  procProductInventory          String   @default("sp_INV_GetProductInventory") @map("proc_product_inventory")
+  procProductPrice              String   @default("sp_INV_GetProductPrice") @map("proc_product_price")
+  procCustomerCheck             String   @default("qry_B2C_GetCustomer") @map("proc_customer_check")
+  procOrderStatus               String   @default("sp_INV_OrderStatus") @map("proc_order_status")
+  procDefaultsAddressCodes      String   @default("sp_INV_GetAddressList") @map("proc_defaults_address_codes")
+  createdAt                     DateTime @default(now()) @map("created_at")
+  updatedAt                     DateTime @updatedAt @map("updated_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("nebim")
+  @@schema("tenants")
+  @@index([tenantId])
+}
+
+// Auths Schema
+model AuthShopify {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique @map("tenant_id")
+  apiKeyHash            String?  @map("api_key_hash")
+  apiKeyEncryptedData   String?  @map("api_key_encrypted_data")
+  apiKeyIv              String?  @map("api_key_iv")
+  apiKeyAuthTag         String?  @map("api_key_auth_tag")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("shopify")
+  @@schema("auths")
+  @@index([tenantId])
+}
+
+model AuthNebim {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique @map("tenant_id")
+  passwordHash           String?  @map("password_hash")
+  passwordEncryptedData  String?  @map("password_encrypted_data")
+  passwordIv             String?  @map("password_iv")
+  passwordAuthTag        String?  @map("password_auth_tag")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("nebim")
+  @@schema("auths")
+  @@index([tenantId])
+}
+
+// Billings Schema
+model PricingInfo {
+  id                  String   @id @default(uuid())
+  tenantId            String   @unique @map("tenant_id")
+  planKey             PlanKey  @map("plan_key")
+  subscriptionId      String?  @map("subscription_id")
+  subscriptionLineId  String?  @map("subscription_line_id")
+  orderLimit          Int      @default(10) @map("order_limit")
+  orderUsed           Int      @default(0) @map("order_used")
+  productDetailsLimit Int      @default(1000) @map("product_details_limit")
+  productDetailsUsed  Int      @default(0) @map("product_details_used")
+  periodStart         DateTime @map("period_start")
+  periodEnd           DateTime @map("period_end")
+  isBlocked           Boolean  @default(false) @map("is_blocked")
+  pendingNonce        String?  @map("pending_nonce")
+  pendingPlanKey      String?  @map("pending_plan_key")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("pricing")
+  @@schema("billings")
+  @@index([tenantId])
+}
+
+// Schedules Schema
+model ScheduleTenant {
+  id                                  String   @id @default(uuid())
+  tenantId                            String   @unique @map("tenant_id")
+  nebimProductInventoryInterval       String   @default("0 * * * *") @map("nebim_product_inventory_interval")
+  nebimProductInventoryStartDate      DateTime @map("nebim_product_inventory_start_date")
+  nebimProductInventoryIsActive      Boolean  @default(false) @map("nebim_product_inventory_is_active")
+  nebimProductDetailsInterval        String   @default("0 0 * * *") @map("nebim_product_details_interval")
+  nebimProductDetailsStartDate       DateTime @map("nebim_product_details_start_date")
+  nebimProductDetailsIsActive        Boolean  @default(false) @map("nebim_product_details_is_active")
+  nebimOrderCreateCancelInterval     String   @default("*/30 * * * *") @map("nebim_order_create_cancel_interval")
+  nebimOrderCreateCancelStartDate    DateTime @map("nebim_order_create_cancel_start_date")
+  nebimOrderCreateCancelIsActive     Boolean  @default(false) @map("nebim_order_create_cancel_is_active")
+  nebimOrderStatusInterval           String   @default("0 0 * * *") @map("nebim_order_status_interval")
+  nebimOrderStatusStartDate          DateTime @map("nebim_order_status_start_date")
+  nebimOrderStatusIsActive          Boolean  @default(false) @map("nebim_order_status_is_active")
+  redentionLogsInterval              String   @default("0 0 * * *") @map("redention_logs_interval")
+  redentionLogsStartDate             DateTime @map("redention_logs_start_date")
+  redentionLogsIsActive              Boolean  @default(true) @map("redention_logs_is_active")
+  createdAt                          DateTime @default(now()) @map("created_at")
+  updatedAt                          DateTime @updatedAt @map("updated_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant")
+  @@schema("schedules")
+  @@index([tenantId])
+}
+
+// Sync Schema
+model SyncBatch {
+  id                              String      @id @default(uuid())
+  tenantId                        String      @map("tenant_id")
+  process                         ProcessType
+  requestStartDate                String?     @map("request_start_date")
+  requestEndDate                  String?     @map("request_end_date")
+  requestOrderNumberList          String[]    @map("request_order_number_list")
+  total                           Int?
+  createOrderTotal                Int?        @map("create_order_total")
+  createOrderSuccess              Int?        @map("create_order_success")
+  createOrderError                Int?        @map("create_order_error")
+  createOrderSkippedTotal         Int?        @map("create_order_skipped_total")
+  createOrderSkippedAlreadySynced Int?        @map("create_order_skipped_already_synced")
+  createOrderSkippedFailed        Int?        @map("create_order_skipped_failed")
+  cancelOrderTotal                Int?        @map("cancel_order_total")
+  cancelOrderSuccess              Int?        @map("cancel_order_success")
+  cancelOrderError                Int?        @map("cancel_order_error")
+  cancelOrderSkippedTotal         Int?        @map("cancel_order_skipped_total")
+  cancelOrderSkippedAlreadySynced Int?        @map("cancel_order_skipped_already_synced")
+  cancelOrderSkippedFailed        Int?        @map("cancel_order_skipped_failed")
+  cancelOrderSkippedNotFound      Int?        @map("cancel_order_skipped_not_found")
+  isErrorLogExistsForBatch        Boolean?    @map("is_error_log_exists_for_batch")
+  traceId                         String      @map("trace_id")
+  createdAt                       DateTime    @default(now()) @map("created_at")
+
+  tenant        TenantInfo         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  failedOrders  SyncFailedOrder[]
+  successOrders SyncSuccessOrder[]
+
+  @@map("batch")
+  @@schema("sync")
+  @@index([tenantId])
+  @@index([traceId])
+  @@index([process])
+}
+
+model SyncFailedOrder {
+  id           String      @id @default(uuid())
+  tenantId     String      @map("tenant_id")
+  syncBatchId  String      @map("sync_batch_id")
+  shopifyOrderId String    @map("shopify_order_id")
+  orderData    Json?       @map("order_data")
+  reason       String?
+  process      ProcessType
+  isCancelled  Boolean     @default(false) @map("is_cancelled")
+  traceId      String      @map("trace_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  tenant    TenantInfo  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  syncBatch SyncBatch   @relation(fields: [syncBatchId], references: [id], onDelete: Cascade)
+
+  @@map("failed_order")
+  @@schema("sync")
+  @@index([tenantId])
+  @@index([syncBatchId])
+  @@index([traceId])
+  @@index([shopifyOrderId])
+}
+
+model SyncSuccessOrder {
+  id                      String   @id @default(uuid())
+  tenantId                String   @map("tenant_id")
+  syncBatchId             String   @map("sync_batch_id")
+  nebimOrderId            String?  @map("nebim_order_id")
+  shopifyOrderId          String?  @map("shopify_order_id")
+  lines                   Json?
+  partiallyCancelledLines Json?    @map("partially_cancelled_lines")
+  isCancelled             Boolean  @default(false) @map("is_cancelled")
+  isShipped               Boolean  @default(false) @map("is_shipped")
+  isPartiallyCancelled    Boolean  @default(false) @map("is_partially_cancelled")
+  traceId                 String   @map("trace_id")
+  cleared                 Boolean  @default(false)
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  tenant    TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  syncBatch SyncBatch  @relation(fields: [syncBatchId], references: [id], onDelete: Cascade)
+
+  @@map("success_order")
+  @@schema("sync")
+  @@index([tenantId])
+  @@index([syncBatchId])
+  @@index([traceId])
+  @@index([nebimOrderId])
+  @@index([shopifyOrderId])
+}
+
+// Logs Schema
+model RequestLog {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  requestId     String?  @map("request_id")
+  method        String?
+  url           String?
+  body          String?  @db.Text
+  headers       String?  @db.Text
+  status        Int?
+  responseTime  String?  @map("response_time")
+  response      String?  @db.Text
+  traceId       String   @map("trace_id")
+  transactionId String?  @map("transaction_id")
+  isError       Boolean? @map("is_error")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("request")
+  @@schema("logs")
+  @@index([tenantId])
+  @@index([traceId])
+  @@index([transactionId])
+}
