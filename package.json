@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@prisma/client": "^6.19.1",
     "axios": "^1.8.4",
     "body-parser": "^2.2.0",
     "chalk": "^5.4.1",
@@ -19,16 +20,23 @@
   "main": "app.js",
   "type": "module",
   "devDependencies": {
-    "nodemon": "^3.1.9",
-    "jest": "^29.7.0",
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
-    "babel-jest": "^29.7.0"
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "prisma": "^6.19.1"
   },
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "dev": "nodemon app.js",
-    "start": "node app.js"
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:setup": "npm run prisma:push && npm run prisma:generate",
+    "migrate:mongo-to-postgres": "node migrations/migrateToPostgres.js",
+    "prestart": "npm run prisma:setup && npm run migrate:mongo-to-postgres",
+    "start": "node app.js",
+    "predev": "npm run prisma:setup",
+    "dev": "nodemon app.js"
   },
   "repository": {
     "type": "git",

@@ -40,7 +40,7 @@ export default new class ProxyController extends CoreController {
                     'X-Forwarded-For': req.ip,
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-Original-Path': req.originalUrl,
-                    'x-tenant-id': req.tenant._id
+                    'x-tenant-id': req.tenant.id
                 },
                 httpAgent: agent,
                 data: req.body,

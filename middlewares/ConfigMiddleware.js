@@ -1,6 +1,6 @@
 import CoreController from "../core/CoreControler.js";
-import Tenant from "../models/db/Tenant.js"
-import mongoose from "mongoose";
+import Tenant from "../models/db/postgres/Tenant.js"
+import UuidHelper from "../helpers/UuidHelper.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 import CyrptoHelper from "../helpers/CryptoHelper.js"
 
@@ -19,18 +19,14 @@ export default new class ConfigMiddleware extends CoreController {
             });
         }
 
-        if (!mongoose.isValidObjectId(tenantId)) {
+        if (!UuidHelper.isValidUuid(tenantId)) {
             return this.response(res, {
                 status: HttpStatusCodes.BAD_REQUEST,
-                info: "Invalid mongo object id format.",
+                info: "Invalid UUID format.",
             });
         }
 
-        const tenant = await Tenant.findById(tenantId)
-            .select('+shopify.apiKey.encryptedData')
-            .select('+shopify.apiKey.iv')
-            .select('+shopify.apiKey.authTag')
-            .lean();
+        const tenant = await Tenant.findById(tenantId);
 
         if (!tenant) {
             return this.response(res, {

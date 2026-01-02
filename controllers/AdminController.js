@@ -1,7 +1,7 @@
 import CoreController from "../core/CoreControler.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
 import CryptoHelper from "../helpers/CryptoHelper.js";
-import Tenant from "../models/db/Tenant.js";
+import Tenant from "../models/db/postgres/Tenant.js";
 
 export default new class AdminController extends CoreController {
     constructor() {
@@ -26,12 +26,10 @@ export default new class AdminController extends CoreController {
                 ...password, 
             }
         }
-        const tenant = new Tenant(req.body);
         const { hash, key } = CryptoHelper.generateHashedKey();
-
-        tenant.apiKey = hash
-
-        await tenant.save();
+        req.body.apiKey = hash;
+        
+        const tenant = await Tenant.create(req.body);
 
         return this.response(res, { 
             status: HttpStatusCodes.CREATED,

@@ -1,14 +1,14 @@
 import CoreController from '../core/CoreControler.js';
-import Tenant from '../models/db/Tenant.js';
+import Tenant from '../models/db/postgres/Tenant.js';
 import CryptoHelper from '../helpers/CryptoHelper.js';
 import HttpStatusCodes from '../enums/HttpStatusCodes.js';
 import ObjectHelper from '../helpers/ObjectHelper.js';
 import NebimCache from '../cache/NebimCache.js';
 import ShopifyCache from '../cache/ShopifyCache.js';
-import SuccessOrder from '../models/db/SuccessOrder.js';
-import FailedOrder from '../models/db/FailedOrder.js';
-import OrderSyncBatch from '../models/db/OrderSyncBatch.js';
-import RequestLog from '../models/db/RequestLog.js';
+import SuccessOrder from '../models/db/postgres/SuccessOrder.js';
+import FailedOrder from '../models/db/postgres/FailedOrder.js';
+import OrderSyncBatch from '../models/db/postgres/OrderSyncBatch.js';
+import RequestLog from '../models/db/postgres/RequestLog.js';
 
 export default new class TenantController extends CoreController {
     constructor() {
@@ -16,7 +16,7 @@ export default new class TenantController extends CoreController {
     }
 
     getTenant = async (req, res) => { 
-        const tenant = await Tenant.findById(req.tenant._id);
+        const tenant = await Tenant.findById(req.tenant.id);
 
         return this.response(res, {
             content: tenant,
@@ -26,7 +26,7 @@ export default new class TenantController extends CoreController {
 
     patchTenant = async (req, res) => {
         const updateData = req.body;
-        const tenant = await Tenant.findById(req.tenant._id);
+        let tenant = await Tenant.findById(req.tenant.id);
 
         if (updateData.nebim && (updateData.nebim.password || (updateData.nebim.host && updateData.nebim.host !== tenant.nebim.host) || (updateData.nebim.user && updateData.nebim.user !== tenant.nebim.user) || (updateData.nebim.userGroup && updateData.nebim.userGroup !== tenant.nebim.userGroup))) {
             const response = await this.httpRequest.post(`${process.env.INTEGRATION_API_HOST}/nebim/check`, {
@@ -34,7 +34,7 @@ export default new class TenantController extends CoreController {
                 ...updateData.nebim
             }, {
                 headers: {
-                    'x-tenant-id': tenant._id
+                    'x-tenant-id': tenant.id
                 }
             }).catch(error => {
                 const info = error?.isAxiosError ? error.response?.data?.info : null;
@@ -48,8 +48,14 @@ export default new class TenantController extends CoreController {
             tenant.nebim.order.office = response.data.content.OfficeCode ?? "";
             tenant.nebim.order.store = response.data.content.StoreCode ?? "";
             tenant.nebim.order.company = response.data.content.CompanyCode ?? "";
-
-            if (updateData.nebim.password) tenant.nebim.password = CryptoHelper.encrypt(updateData.nebim.password);
+            
+            if (updateData.nebim.password) {
+                const encryptedPassword = CryptoHelper.encrypt(updateData.nebim.password);
+                tenant.nebim.password = encryptedPassword;
+                // Set encrypted password in updateData to ensure it's saved correctly
+                if (!updateData.nebim) updateData.nebim = {};
+                updateData.nebim.password = encryptedPassword;
+            }
         }
 
         if (updateData?.shopify?.apiKey) delete updateData.shopify.apiKey;
@@ -63,9 +69,23 @@ export default new class TenantController extends CoreController {
 
         if (updateData?.shopify?.billing) delete updateData.shopify.billing;
 
-        ObjectHelper.deepMerge(tenant, updateData);
+        // Store encrypted password BEFORE merge (it might get lost during merge)
+        const passwordToSave = updateData.nebim?.password || null;
 
-        await tenant.save();
+        // Deep merge update data into tenant object
+        const mergedData = ObjectHelper.deepMerge({}, tenant);
+        ObjectHelper.deepMerge(mergedData, updateData);
+        
+        // Ensure password is preserved after merge (deepMerge might not handle nested objects correctly)
+        if (passwordToSave) {
+            if (!mergedData.nebim) mergedData.nebim = {};
+            mergedData.nebim.password = passwordToSave;
+        }
+        
+        await Tenant.updateOne({ id: tenant.id }, mergedData);
+        
+        // Reload tenant to return updated version
+        tenant = await Tenant.findById(tenant.id);
 
         return this.response(res, {
             content: tenant,
@@ -74,11 +94,12 @@ export default new class TenantController extends CoreController {
     }
 
     deleteTenant = async (req, res) => {
-        const tenant = await Tenant.findById(req.tenant._id);
+        const tenantId = req.tenant.id;
+        const tenant = await Tenant.findById(tenantId);
 
         if (!tenant) return this.response(res, {
             status: HttpStatusCodes.BAD_REQUEST,
-            info: `Tenant not found for deletion: ${req.tenant._id}`
+            info: `Tenant not found for deletion: ${tenantId}`
         });
 
         this.logger.info(`Deleting tenant: ${tenant.name} - ${tenant.shopify.shopId}`);
@@ -90,23 +111,23 @@ export default new class TenantController extends CoreController {
         await shopifyCache.deleteAll();
 
         await SuccessOrder.deleteMany({
-            tenant: tenant._id
+            tenant: tenant.id
         });
 
         await FailedOrder.deleteMany({
-            tenant: tenant._id
+            tenant: tenant.id
         });
 
         await OrderSyncBatch.deleteMany({
-            tenant: tenant._id
+            tenant: tenant.id
         });
 
         await RequestLog.deleteMany({
-            tenant: tenant._id
+            tenant: tenant.id
         });
 
         await Tenant.deleteOne({
-            _id: tenant._id
+            id: tenant.id
         });
         
         this.logger.info(`Tenant deleted: ${tenant.name} - ${tenant.shopify.shopId}`);

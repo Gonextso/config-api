@@ -9,7 +9,6 @@ import shopifyAuthRouter from '../routes/shopify/auth.js';
 import shopifyBillingRouter from '../routes/shopify/billing.js';
 import adminRouter  from '../routes/admin.js';
 import tenantRouter from '../routes/tenant.js';
-import supportRouter from '../routes/supportRouter.js';
 import proxyRouter from '../routes/proxy.js';
 import RequestMiddleware from '../middlewares/RequestMiddleware.js';
 import AuthMiddleware from '../middlewares/AuthMiddleware.js';
@@ -64,7 +63,6 @@ app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
 app.use(`${routePrefix}/shopify/webhooks/gdpr`, shopifyGdprRouter);
 app.use(`${routePrefix}/shopify/webhooks/billing`, shopifyBillingRouter);
 app.use(`${routePrefix}/shopify/webhooks/shop`, shopifyShopRouter);
-app.use(`${routePrefix}/support/shopify`, AuthMiddleware.isShopifyAuthenticated, RequestMiddleware.setEcommerceIdAsShopify, supportRouter);
 app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, tenantRouter);
 app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
