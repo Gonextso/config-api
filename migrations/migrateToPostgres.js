@@ -196,7 +196,7 @@ async function migrateTenants() {
               nebimOrderCreateCancelInterval: tenant.shopify.schedules.nebim?.order?.create_and_cancel?.interval || '*/30 * * * *',
               nebimOrderCreateCancelStartDate: tenant.shopify.schedules.nebim?.order?.create_and_cancel?.startDate ? new Date(tenant.shopify.schedules.nebim.order.create_and_cancel.startDate) : moment().subtract(30, 'minutes').toDate(),
               nebimOrderCreateCancelIsActive: tenant.shopify.schedules.nebim?.order?.create_and_cancel?.isActive ?? false,
-              nebimOrderStatusInterval: tenant.shopify.schedules.nebim?.order?.status?.interval || '0 0 * * *',
+              nebimOrderStatusInterval: tenant.shopify.schedules.nebim?.order?.status?.interval || '*/5 * * * *',
               nebimOrderStatusStartDate: tenant.shopify.schedules.nebim?.order?.status?.startDate ? new Date(tenant.shopify.schedules.nebim.order.status.startDate) : moment().subtract(1, 'days').toDate(),
               nebimOrderStatusIsActive: tenant.shopify.schedules.nebim?.order?.status?.isActive ?? false,
               redentionLogsInterval: tenant.shopify.schedules.redention?.logs?.interval || '0 0 * * *',

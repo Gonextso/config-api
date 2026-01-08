@@ -173,7 +173,7 @@ class TenantModel {
           nebimOrderCreateCancelInterval: '*/30 * * * *',
           nebimOrderCreateCancelStartDate: moment().subtract(30, 'minutes').toDate(),
           nebimOrderCreateCancelIsActive: false,
-          nebimOrderStatusInterval: '0 0 * * *',
+          nebimOrderStatusInterval: '*/5 * * * *',
           nebimOrderStatusStartDate: moment().subtract(1, 'days').toDate(),
           nebimOrderStatusIsActive: false,
           redentionLogsInterval: '0 0 * * *',
@@ -290,7 +290,7 @@ class TenantModel {
             nebimOrderCreateCancelInterval: '*/30 * * * *',
             nebimOrderCreateCancelStartDate: moment().subtract(30, 'minutes').toDate(),
             nebimOrderCreateCancelIsActive: false,
-            nebimOrderStatusInterval: '0 0 * * *',
+            nebimOrderStatusInterval: '*/5 * * * *',
             nebimOrderStatusStartDate: moment().subtract(1, 'days').toDate(),
             nebimOrderStatusIsActive: false,
             redentionLogsInterval: '0 0 * * *',
@@ -341,6 +341,15 @@ class TenantModel {
       }
       where = { id: foundTenant.id || foundTenant._id };
       existingTenant = foundTenant;
+    }
+    
+    // Merge schedules with existing tenant schedules before normalization
+    // This ensures that partial schedule updates preserve existing values
+    if (update.shopify?.schedules && existingTenant?.shopify?.schedules) {
+      update.shopify.schedules = ObjectHelper.deepMerge(
+        JSON.parse(JSON.stringify(existingTenant.shopify.schedules)),
+        update.shopify.schedules
+      );
     }
     
     const normalized = this._normalizeUpdate(update);
@@ -566,7 +575,7 @@ class TenantModel {
           nebimOrderCreateCancelInterval: data.shopify.schedules.nebim?.order?.create_and_cancel?.interval || '*/30 * * * *',
           nebimOrderCreateCancelStartDate: data.shopify.schedules.nebim?.order?.create_and_cancel?.startDate ? new Date(data.shopify.schedules.nebim.order.create_and_cancel.startDate) : moment().subtract(30, 'minutes').toDate(),
           nebimOrderCreateCancelIsActive: data.shopify.schedules.nebim?.order?.create_and_cancel?.isActive ?? false,
-          nebimOrderStatusInterval: data.shopify.schedules.nebim?.order?.status?.interval || '0 0 * * *',
+          nebimOrderStatusInterval: data.shopify.schedules.nebim?.order?.status?.interval || '*/5 * * * *',
           nebimOrderStatusStartDate: data.shopify.schedules.nebim?.order?.status?.startDate ? new Date(data.shopify.schedules.nebim.order.status.startDate) : moment().subtract(1, 'days').toDate(),
           nebimOrderStatusIsActive: data.shopify.schedules.nebim?.order?.status?.isActive ?? false,
           redentionLogsInterval: data.shopify.schedules.redention?.logs?.interval || '0 0 * * *',

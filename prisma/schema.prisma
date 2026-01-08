@@ -196,7 +196,7 @@ model ScheduleTenant {
   nebimOrderCreateCancelInterval     String   @default("*/30 * * * *") @map("nebim_order_create_cancel_interval")
   nebimOrderCreateCancelStartDate    DateTime @map("nebim_order_create_cancel_start_date")
   nebimOrderCreateCancelIsActive     Boolean  @default(false) @map("nebim_order_create_cancel_is_active")
-  nebimOrderStatusInterval           String   @default("0 0 * * *") @map("nebim_order_status_interval")
+  nebimOrderStatusInterval           String   @default("*/5 * * * *") @map("nebim_order_status_interval")
   nebimOrderStatusStartDate          DateTime @map("nebim_order_status_start_date")
   nebimOrderStatusIsActive          Boolean  @default(false) @map("nebim_order_status_is_active")
   redentionLogsInterval              String   @default("0 0 * * *") @map("redention_logs_interval")
