@@ -72,6 +72,16 @@ export default new class TenantController extends CoreController {
         // Store encrypted password BEFORE merge (it might get lost during merge)
         const passwordToSave = updateData.nebim?.password || null;
 
+        // Handle schedules separately to ensure proper merging of nested schedule objects
+        // If schedules are being updated, merge them properly with existing schedules
+        if (updateData?.shopify?.schedules && tenant.shopify?.schedules) {
+            // Deep merge schedules to preserve existing schedule values that aren't being updated
+            updateData.shopify.schedules = ObjectHelper.deepMerge(
+                JSON.parse(JSON.stringify(tenant.shopify.schedules)),
+                updateData.shopify.schedules
+            );
+        }
+
         // Deep merge update data into tenant object
         const mergedData = ObjectHelper.deepMerge({}, tenant);
         ObjectHelper.deepMerge(mergedData, updateData);
