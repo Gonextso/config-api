@@ -68,6 +68,17 @@ export default class {
                 LOG: 5
             }
         },
+        PRO: {
+            KEY: 'PRO',
+            TOKEN_LIMIT: 1500,
+            LIMITS: {
+                ORDER: 1250,
+                PRODUCT_DETAILS: 10000
+            },
+            REDENTION: {
+                LOG: 10
+            }
+        },
         ENTERPRISE: {
             KEY: 'ENTERPRISE',
             TOKEN_LIMIT: 0,

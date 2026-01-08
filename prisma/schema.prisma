@@ -28,6 +28,7 @@ enum ProcessType {
 enum PlanKey {
   BASIC
   COMMUNITY
+  PRO
   ENTERPRISE
 
   @@schema("tenants")
