@@ -150,6 +150,11 @@ export default new class ShopifyAuthController extends CoreController {
                 const billingBusiness = new ShopifyBillingBusiness({ shopify: { name: newTenant.name, decryptedApiKey: accessToken } });
                 const activeSubscription = await billingBusiness.getActiveSubscription();
 
+                const planKey = activeSubscription 
+                    ? (SystemCodes.BILLING_PLANS[activeSubscription.name.toUpperCase()]?.KEY ?? SystemCodes.BILLING_PLANS.BASIC.KEY)
+                    : SystemCodes.BILLING_PLANS.BASIC.KEY;
+                const planConfig = SystemCodes.BILLING_PLANS[planKey];
+
                 const tenantDto = {
                     name: newTenant.name,
                     shopify: {
@@ -159,12 +164,22 @@ export default new class ShopifyAuthController extends CoreController {
                         customerEmail: shop.customer_email,
                         apiKey: { ...CryptoHelper.encrypt(accessToken) },
                         billing: activeSubscription ? {
-                            planKey: SystemCodes.BILLING_PLANS[activeSubscription.name.toUpperCase()]?.KEY ?? SystemCodes.BILLING_PLANS.BASIC.KEY,
+                            planKey: planKey,
                             subscription: {
                                 id: activeSubscription.id ?? ""
                             },
-                            tokenLimit: SystemCodes.BILLING_PLANS[activeSubscription.name.toUpperCase()]?.TOKEN_LIMIT ?? SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
+                            tokenLimit: planConfig?.TOKEN_LIMIT ?? SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
                             tokenUsed: 0,
+                            limits: {
+                                order: {
+                                    limit: planConfig?.LIMITS?.ORDER ?? SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
+                                    used: 0
+                                },
+                                product_details: {
+                                    limit: planConfig?.LIMITS?.PRODUCT_DETAILS ?? SystemCodes.BILLING_PLANS.BASIC.LIMITS.PRODUCT_DETAILS,
+                                    used: 0
+                                }
+                            },
                             periodStart: activeSubscription.createdAt,
                             periodEnd: activeSubscription.currentPeriodEnd,
                             isBlocked: activeSubscription.status !== "ACTIVE",

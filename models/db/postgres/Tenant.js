@@ -352,7 +352,7 @@ class TenantModel {
       );
     }
     
-    const normalized = this._normalizeUpdate(update);
+    const normalized = this._normalizeUpdate(update, existingTenant);
     
     // Preserve shopId if it's not in the update and exists in the current tenant
     if (normalized.shopify && existingTenant?.shopify?.shopId && !update.shopify?.shopId && !update['shopify.shopId']) {
@@ -631,7 +631,7 @@ class TenantModel {
   /**
    * Normalize update object
    */
-  _normalizeUpdate(update) {
+  _normalizeUpdate(update, existingTenant = null) {
     const normalized = {
       base: {},
       shopify: null,
@@ -692,14 +692,46 @@ class TenantModel {
       }
     }
 
-    // Merge nested updates
+    // Preserve existing used values in billing limits if not in update
+    if (nestedUpdate.shopify?.billing?.limits && existingTenant?.shopify?.billing?.limits) {
+      // Preserve product_details.used if not in update
+      if (nestedUpdate.shopify.billing.limits.product_details && 
+          nestedUpdate.shopify.billing.limits.product_details.used === undefined) {
+        nestedUpdate.shopify.billing.limits.product_details.used = 
+          existingTenant.shopify.billing.limits.product_details?.used ?? 0;
+      }
+      // Preserve order.used if not in update
+      if (nestedUpdate.shopify.billing.limits.order && 
+          nestedUpdate.shopify.billing.limits.order.used === undefined) {
+        nestedUpdate.shopify.billing.limits.order.used = 
+          existingTenant.shopify.billing.limits.order?.used ?? 0;
+      }
+    }
+
+    // Merge nested updates with deep merge to preserve nested objects
     if (nestedUpdate.shopify) {
       if (!update.shopify) update.shopify = {};
-      Object.assign(update.shopify, nestedUpdate.shopify);
+      ObjectHelper.deepMerge(update.shopify, nestedUpdate.shopify);
     }
     if (nestedUpdate.nebim) {
       if (!update.nebim) update.nebim = {};
       ObjectHelper.deepMerge(update.nebim, nestedUpdate.nebim);
+    }
+
+    // Preserve existing used values in billing limits for object-style updates (before normalization)
+    if (update.shopify?.billing?.limits && existingTenant?.shopify?.billing?.limits) {
+      // Preserve product_details.used if not in update
+      if (update.shopify.billing.limits.product_details && 
+          update.shopify.billing.limits.product_details.used === undefined) {
+        update.shopify.billing.limits.product_details.used = 
+          existingTenant.shopify.billing.limits.product_details?.used ?? 0;
+      }
+      // Preserve order.used if not in update
+      if (update.shopify.billing.limits.order && 
+          update.shopify.billing.limits.order.used === undefined) {
+        update.shopify.billing.limits.order.used = 
+          existingTenant.shopify.billing.limits.order?.used ?? 0;
+      }
     }
 
     if (update.name !== undefined) normalized.base.name = update.name;
