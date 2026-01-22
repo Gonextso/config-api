@@ -9,6 +9,7 @@ import SuccessOrder from '../models/db/postgres/SuccessOrder.js';
 import FailedOrder from '../models/db/postgres/FailedOrder.js';
 import OrderSyncBatch from '../models/db/postgres/OrderSyncBatch.js';
 import RequestLog from '../models/db/postgres/RequestLog.js';
+import ClientProvider from '../cache/ClientProvider.js';
 
 export default new class TenantController extends CoreController {
     constructor() {
@@ -22,6 +23,82 @@ export default new class TenantController extends CoreController {
             content: tenant,
             status: HttpStatusCodes.SUCCESS
         });
+    }
+
+    getSyncStatus = async (req, res) => {
+        try {
+            const tenant = await Tenant.findById(req.tenant.id);
+            if (!tenant) {
+                return this.response(res, {
+                    info: "Tenant not found",
+                    status: HttpStatusCodes.NOT_FOUND
+                });
+            }
+
+            const redisClient = ClientProvider.systemClient;
+            if (!redisClient) {
+                return this.response(res, {
+                    info: "Redis client not initialized",
+                    status: HttpStatusCodes.SERVER_ERROR
+                });
+            }
+
+            const schedules = tenant?.shopify?.schedules?.nebim;
+            const jobs = [
+                {
+                    key: "product.details",
+                    label: "Ürün Detay&Fiyat",
+                    schedule: schedules?.product?.details
+                },
+                {
+                    key: "product.inventory",
+                    label: "Ürün Envanter",
+                    schedule: schedules?.product?.inventory
+                },
+                {
+                    key: "order.create_and_cancel",
+                    label: "Sipariş",
+                    schedule: schedules?.order?.create_and_cancel
+                },
+                {
+                    key: "order.status",
+                    label: "Sipariş Durum Sorgulama",
+                    schedule: schedules?.order?.status
+                }
+            ];
+
+            const jobStatuses = await Promise.all(jobs.map(async (job) => {
+                const isActive = Boolean(job.schedule?.isActive);
+                const interval = job.schedule?.interval || "";
+                let status = "disabled";
+
+                if (isActive) {
+                    const [parentKey, childKey] = job.key.split(".");
+                    const redisKey = `cron:${tenant.id}:${parentKey}:${childKey}`;
+                    const redisValue = await redisClient.get(redisKey);
+                    status = redisValue ? "active" : "idle";
+                }
+
+                return {
+                    key: job.key,
+                    label: job.label,
+                    status,
+                    isActive,
+                    interval
+                };
+            }));
+
+            return this.response(res, {
+                content: { jobs: jobStatuses },
+                status: HttpStatusCodes.SUCCESS
+            });
+        } catch (error) {
+            return this.response(res, {
+                status: HttpStatusCodes.SERVER_ERROR,
+                info: "Failed to fetch sync status",
+                error
+            });
+        }
     }
 
     patchTenant = async (req, res) => {
