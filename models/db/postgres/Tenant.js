@@ -125,6 +125,7 @@ class TenantModel {
       createData.nebim = {
         create: {
           isActive: true,
+          blockProductGenerationWhenOff: false,
           productCategoryKeysFrom: [],
           customerPhoneType: '7',
           customerAddressType: '1',
@@ -240,6 +241,7 @@ class TenantModel {
         upsert: {
           create: {
             isActive: true,
+            blockProductGenerationWhenOff: false,
             productCategoryKeysFrom: [],
             customerPhoneType: '7',
             customerAddressType: '1',
@@ -592,6 +594,7 @@ class TenantModel {
         userGroup: data.nebim.userGroup,
         salesUrl: data.nebim.salesUrl,
         isActive: data.nebim.isActive ?? true,
+        blockProductGenerationWhenOff: data.nebim.blockProductGenerationWhenOff ?? false,
         productCategoryKeysFrom: data.nebim.product?.categoryKeysFrom || [],
         customerPhoneType: data.nebim.customer?.phoneType || '7',
         customerAddressType: data.nebim.customer?.addressType || '1',
@@ -907,6 +910,7 @@ class TenantModel {
         userGroup: tenant.nebim.userGroup,
         salesUrl: tenant.nebim.salesUrl,
         isActive: tenant.nebim.isActive,
+        blockProductGenerationWhenOff: tenant.nebim.blockProductGenerationWhenOff ?? false,
         product: {
           categoryKeysFrom: tenant.nebim.productCategoryKeysFrom,
         },
