@@ -106,18 +106,25 @@ export default new class TenantController extends CoreController {
         let tenant = await Tenant.findById(req.tenant.id);
 
         if (updateData.nebim && (updateData.nebim.password || (updateData.nebim.host && updateData.nebim.host !== tenant.nebim.host) || (updateData.nebim.user && updateData.nebim.user !== tenant.nebim.user) || (updateData.nebim.userGroup && updateData.nebim.userGroup !== tenant.nebim.userGroup))) {
-            const response = await this.httpRequest.post(`${process.env.INTEGRATION_API_HOST}/nebim/check`, {
-                ...tenant.nebim,
-                ...updateData.nebim
-            }, {
-                headers: {
-                    'x-tenant-id': tenant.id
-                }
-            }).catch(error => {
+            let response;
+            try {
+                response = await this.httpRequest.post(`${process.env.INTEGRATION_API_HOST}/nebim/check`, {
+                    ...tenant.nebim,
+                    ...updateData.nebim
+                }, {
+                    headers: {
+                        'x-tenant-id': tenant.id
+                    }
+                });
+            } catch (error) {
                 const info = error?.isAxiosError ? error.response?.data?.info : null;
                 const message = info ? `Nebim V3 bağlantı hatası: "${info}"` : "Nebim V3'e bağlanırken hata oluştu";
-                this.throws(message, true);
-            });
+                return this.response(res, {
+                    status: HttpStatusCodes.BAD_GATEWAY,
+                    info: message,
+                    error
+                });
+            }
 
             tenant.nebim.user = response.data.content.UserName;
             tenant.nebim.userGroup = response.data.content.UserGroupCode;
