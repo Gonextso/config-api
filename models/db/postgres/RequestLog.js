@@ -20,6 +20,61 @@ class RequestLogModel {
   }
 
   /**
+   * Find paginated request logs by query
+   */
+  async findPage(query = {}) {
+    const where = this._buildWhereClause(query);
+    const page = Number.isFinite(query.page) ? query.page : Number(query.page || 0);
+    const limit = Number.isFinite(query.limit) ? query.limit : Number(query.limit || 25);
+    const safePage = page < 0 ? 0 : page;
+    const safeLimit = limit > 0 ? limit : 25;
+    const skip = safePage * safeLimit;
+
+    const logs = await prisma.requestLog.findMany({
+      where,
+      include: {
+        tenant: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip,
+      take: safeLimit,
+    });
+
+    return logs.map(l => this._transformToMongoFormat(l));
+  }
+
+  /**
+   * Count request logs by query
+   */
+  async count(query = {}) {
+    const where = this._buildWhereClause(query);
+    return prisma.requestLog.count({ where });
+  }
+
+  /**
+   * Distinct request URLs by query
+   */
+  async distinctUrls(query = {}) {
+    const where = this._buildWhereClause(query);
+    const urls = await prisma.requestLog.findMany({
+      where,
+      distinct: ['url'],
+      select: {
+        url: true,
+      },
+      orderBy: {
+        url: 'asc',
+      },
+    });
+
+    return urls
+      .map(item => item.url)
+      .filter(url => typeof url === 'string' && url.length > 0);
+  }
+
+  /**
    * Find one request log
    */
   async findOne(query) {
@@ -88,6 +143,10 @@ class RequestLogModel {
 
     if (query.method) {
       where.method = query.method;
+    }
+
+    if (query.url) {
+      where.url = query.url;
     }
 
     if (query.status !== undefined) {
