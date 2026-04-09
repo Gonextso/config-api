@@ -230,4 +230,68 @@ export default new class TenantController extends CoreController {
             status: HttpStatusCodes.SUCCESS
         });
     }
+
+    getRequestLogs = async (req, res) => {
+        try {
+            const tenantId = req.tenant.id;
+            const page = Number(req.query.page || 0);
+            const limit = Number(req.query.limit || 25);
+            const status = req.query.status !== undefined ? Number(req.query.status) : undefined;
+
+            const query = {
+                tenant: tenantId,
+                page,
+                limit,
+                url: req.query.url || undefined,
+                method: req.query.method || undefined,
+                status: Number.isNaN(status) ? undefined : status
+            };
+
+            const [items, total] = await Promise.all([
+                RequestLog.findPage(query),
+                RequestLog.count(query)
+            ]);
+
+            const safePage = Number.isFinite(page) && page > 0 ? page : 0;
+            const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 25;
+
+            return this.response(res, {
+                content: {
+                    items,
+                    total,
+                    page: safePage,
+                    limit: safeLimit,
+                    hasPrevious: safePage > 0,
+                    hasNext: (safePage + 1) * safeLimit < total
+                },
+                status: HttpStatusCodes.SUCCESS
+            });
+        } catch (error) {
+            return this.response(res, {
+                status: HttpStatusCodes.SERVER_ERROR,
+                info: "Failed to fetch request logs",
+                error
+            });
+        }
+    }
+
+    getRequestLogUrls = async (req, res) => {
+        try {
+            const tenantId = req.tenant.id;
+            const urls = await RequestLog.distinctUrls({
+                tenant: tenantId
+            });
+
+            return this.response(res, {
+                content: { urls },
+                status: HttpStatusCodes.SUCCESS
+            });
+        } catch (error) {
+            return this.response(res, {
+                status: HttpStatusCodes.SERVER_ERROR,
+                info: "Failed to fetch request log urls",
+                error
+            });
+        }
+    }
 }
