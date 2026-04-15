@@ -100,6 +100,8 @@ model TenantNebim {
   customerConfirmationFormStatusCode String?  @map("customer_confirmation_form_status_code")
   customerConsentSource         String   @default("HS_WEB") @map("customer_consent_source")
   customerInactivationReasonCode String? @map("customer_inactivation_reason_code")
+  cargoItemCode                 String?  @map("cargo_item_code")
+  isCargoService                Boolean  @default(false) @map("is_cargo_service")
   orderDeliveryCompany          String?  @map("order_delivery_company")
   orderPosTerminalId            Int      @default(1) @map("order_pos_terminal_id")
   orderCreditCardType           String?  @map("order_credit_card_type")
