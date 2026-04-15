@@ -126,6 +126,7 @@ class TenantModel {
         create: {
           isActive: true,
           blockProductGenerationWhenOff: false,
+          isCargoService: false,
           productCategoryKeysFrom: [],
           customerPhoneType: '7',
           customerAddressType: '1',
@@ -242,6 +243,7 @@ class TenantModel {
           create: {
             isActive: true,
             blockProductGenerationWhenOff: false,
+            isCargoService: false,
             productCategoryKeysFrom: [],
             customerPhoneType: '7',
             customerAddressType: '1',
@@ -595,6 +597,8 @@ class TenantModel {
         salesUrl: data.nebim.salesUrl,
         isActive: data.nebim.isActive ?? true,
         blockProductGenerationWhenOff: data.nebim.blockProductGenerationWhenOff ?? false,
+        cargoItemCode: data.nebim.order?.cargoItemCode ?? data.nebim.cargoItemCode,
+        isCargoService: data.nebim.order?.isCargoService ?? data.nebim.isCargoService ?? false,
         productCategoryKeysFrom: data.nebim.product?.categoryKeysFrom || [],
         customerPhoneType: data.nebim.customer?.phoneType || '7',
         customerAddressType: data.nebim.customer?.addressType || '1',
@@ -923,6 +927,8 @@ class TenantModel {
           inactivationReasonCode: tenant.nebim.customerInactivationReasonCode,
         },
         order: {
+          cargoItemCode: tenant.nebim.cargoItemCode,
+          isCargoService: tenant.nebim.isCargoService ?? false,
           deliveryCompany: tenant.nebim.orderDeliveryCompany,
           posTerminalId: tenant.nebim.orderPosTerminalId,
           creditCardType: tenant.nebim.orderCreditCardType,
