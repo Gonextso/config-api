@@ -67,7 +67,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                         isActive: { type: Boolean, default: false }
                     },
                     details: {
-                        interval: { type: String, default: "0 0 * * *" },
+                        interval: { type: String, default: "0 * * * *" },
                         startDate: {
                             type: String,
                             default: function () {
@@ -91,7 +91,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                         isActive: { type: Boolean, default: false }
                     },
                     status: {
-                        interval: { type: String, default: "*/5 * * * *" },
+                        interval: { type: String, default: "0 * * * *" },
                         startDate: {
                             type: String,
                             default: function () {
