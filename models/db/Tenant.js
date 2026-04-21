@@ -56,7 +56,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             nebim: {
                 product: {
                     inventory: {
-                        interval: { type: String, default: "0 * * * *" },
+                        interval: { type: String, default: "*/5 * * * *" },
                         startDate: {
                             type: String,
                             default: function () {

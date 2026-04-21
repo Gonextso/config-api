@@ -166,7 +166,7 @@ class TenantModel {
     } else {
       createData.schedules = {
         create: {
-          nebimProductInventoryInterval: '0 * * * *',
+          nebimProductInventoryInterval: '*/5 * * * *',
           nebimProductInventoryStartDate: moment().subtract(1, 'hours').toDate(),
           nebimProductInventoryIsActive: false,
           nebimProductDetailsInterval: '0 * * * *',
@@ -285,7 +285,7 @@ class TenantModel {
       updates.schedules = {
         upsert: {
           create: {
-            nebimProductInventoryInterval: '0 * * * *',
+            nebimProductInventoryInterval: '*/5 * * * *',
             nebimProductInventoryStartDate: moment().subtract(1, 'hours').toDate(),
             nebimProductInventoryIsActive: false,
             nebimProductDetailsInterval: '0 * * * *',
@@ -570,7 +570,7 @@ class TenantModel {
 
       if (data.shopify.schedules) {
         normalized.schedules = {
-          nebimProductInventoryInterval: data.shopify.schedules.nebim?.product?.inventory?.interval || '0 * * * *',
+          nebimProductInventoryInterval: data.shopify.schedules.nebim?.product?.inventory?.interval || '*/5 * * * *',
           nebimProductInventoryStartDate: data.shopify.schedules.nebim?.product?.inventory?.startDate ? new Date(data.shopify.schedules.nebim.product.inventory.startDate) : moment().subtract(1, 'hours').toDate(),
           nebimProductInventoryIsActive: data.shopify.schedules.nebim?.product?.inventory?.isActive ?? false,
           nebimProductDetailsInterval: data.shopify.schedules.nebim?.product?.details?.interval || '0 * * * *',
