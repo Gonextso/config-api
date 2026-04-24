@@ -170,7 +170,7 @@ model PricingInfo {
   subscriptionLineId  String?  @map("subscription_line_id")
   orderLimit          Int      @default(10) @map("order_limit")
   orderUsed           Int      @default(0) @map("order_used")
-  productDetailsLimit Int      @default(1000) @map("product_details_limit")
+  productDetailsLimit Int      @default(500) @map("product_details_limit")
   productDetailsUsed  Int      @default(0) @map("product_details_used")
   periodStart         DateTime @map("period_start")
   periodEnd           DateTime @map("period_end")
