@@ -606,7 +606,7 @@ class TenantModel {
         customerConfirmationFormStatusCode: data.nebim.customer?.confirmationFormStatusCode,
         customerConsentSource: data.nebim.customer?.consentSource || 'HS_WEB',
         customerInactivationReasonCode: data.nebim.customer?.inactivationReasonCode,
-        orderDeliveryCompany: data.nebim.order?.deliveryCompany,
+        orderDeliveryCompany: data.nebim.order?.deliveryCompanyCode ?? data.nebim.order?.deliveryCompany,
         orderPosTerminalId: data.nebim.order?.posTerminalId ?? 1,
         orderCreditCardType: data.nebim.order?.creditCardType,
         orderOffice: data.nebim.order?.office,
@@ -929,6 +929,7 @@ class TenantModel {
         order: {
           cargoItemCode: tenant.nebim.cargoItemCode,
           isCargoService: tenant.nebim.isCargoService ?? false,
+          deliveryCompanyCode: tenant.nebim.orderDeliveryCompany,
           deliveryCompany: tenant.nebim.orderDeliveryCompany,
           posTerminalId: tenant.nebim.orderPosTerminalId,
           creditCardType: tenant.nebim.orderCreditCardType,

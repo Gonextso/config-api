@@ -224,7 +224,7 @@ async function migrateTenants() {
             customerConfirmationFormStatusCode: tenant.nebim.customer?.confirmationFormStatusCode,
             customerConsentSource: tenant.nebim.customer?.consentSource || 'HS_WEB',
             customerInactivationReasonCode: tenant.nebim.customer?.inactivationReasonCode,
-            orderDeliveryCompany: tenant.nebim.order?.deliveryCompany,
+            orderDeliveryCompany: tenant.nebim.order?.deliveryCompanyCode ?? tenant.nebim.order?.deliveryCompany,
             orderPosTerminalId: tenant.nebim.order?.posTerminalId ?? 1,
             orderCreditCardType: tenant.nebim.order?.creditCardType,
             orderOffice: tenant.nebim.order?.office,
