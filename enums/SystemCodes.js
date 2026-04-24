@@ -51,7 +51,7 @@ export default class {
             TOKEN_LIMIT: 5,
             LIMITS: {
                 ORDER: 10,
-                PRODUCT_DETAILS: 1000
+                PRODUCT_DETAILS: 500
             },
             REDENTION: {
                 LOG: 1
@@ -61,8 +61,8 @@ export default class {
             KEY: 'COMMUNITY',
             TOKEN_LIMIT: 500,
             LIMITS: {
-                ORDER: 500,
-                PRODUCT_DETAILS: 5000
+                ORDER: 30,
+                PRODUCT_DETAILS: 1000
             },
             REDENTION: {
                 LOG: 5
@@ -72,8 +72,8 @@ export default class {
             KEY: 'PRO',
             TOKEN_LIMIT: 1500,
             LIMITS: {
-                ORDER: 1250,
-                PRODUCT_DETAILS: 10000
+                ORDER: 100,
+                PRODUCT_DETAILS: 2500
             },
             REDENTION: {
                 LOG: 10
