@@ -28,6 +28,7 @@ const mockOrderSyncBatchModel = {
 
 const mockRequestLogModel = {
   find: jest.fn(),
+  findSummary: jest.fn(),
   distinctUrls: jest.fn(),
   findOne: jest.fn(),
 };
@@ -125,6 +126,7 @@ describe('AdminController', () => {
     mockOrderSyncBatchModel.find.mockResolvedValue([]);
     mockOrderSyncBatchModel.findOne.mockResolvedValue(null);
     mockRequestLogModel.find.mockResolvedValue([]);
+    mockRequestLogModel.findSummary.mockResolvedValue([]);
     mockRequestLogModel.distinctUrls.mockResolvedValue([]);
     mockRequestLogModel.findOne.mockResolvedValue(null);
   });
@@ -244,10 +246,10 @@ describe('AdminController', () => {
     it('should return paged logs for tenant', async () => {
       mockReq.params = { tenant_id: tenantId };
       mockReq.query = {};
-      mockRequestLogModel.find.mockResolvedValue([{ id: 'log-1' }]);
+      mockRequestLogModel.findSummary.mockResolvedValue([{ id: 'log-1' }]);
       mockRequestLogModel.distinctUrls.mockResolvedValue(['/orders/sync']);
       await AdminController.getTenantLogs(mockReq, mockRes);
-      expect(mockRequestLogModel.find).toHaveBeenCalledWith({
+      expect(mockRequestLogModel.findSummary).toHaveBeenCalledWith({
         tenant: tenantId,
         url: undefined,
         method: undefined,

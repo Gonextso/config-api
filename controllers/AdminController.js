@@ -114,7 +114,7 @@ export default new class AdminController extends CoreController {
         };
 
         const [data, urls] = await Promise.all([
-            RequestLog.find(query),
+            RequestLog.findSummary(query),
             RequestLog.distinctUrls({ tenant: tenant.id }),
         ]);
         const statuses = [...new Set(

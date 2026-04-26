@@ -8,15 +8,57 @@ class RequestLogModel {
     const where = this._buildWhereClause(query);
     const logs = await prisma.requestLog.findMany({
       where,
-      include: {
-        tenant: true,
-      },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
     return logs.map(l => this._transformToMongoFormat(l));
+  }
+
+  /**
+   * Find request logs for admin list with safe projection
+   * (avoid reading large/problematic text payload columns in list endpoint)
+   */
+  async findSummary(query = {}) {
+    const where = this._buildWhereClause(query);
+    const logs = await prisma.requestLog.findMany({
+      where,
+      select: {
+        id: true,
+        tenantId: true,
+        requestId: true,
+        method: true,
+        url: true,
+        status: true,
+        responseTime: true,
+        traceId: true,
+        transactionId: true,
+        isError: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return logs.map((log) => ({
+      _id: log.id,
+      id: log.id,
+      tenant: log.tenantId,
+      requestId: log.requestId,
+      method: log.method,
+      url: log.url,
+      body: null,
+      headers: null,
+      status: log.status,
+      responseTime: log.responseTime,
+      response: null,
+      traceId: log.traceId,
+      transactionId: log.transactionId,
+      isError: log.isError,
+      createdAt: log.createdAt,
+    }));
   }
 
   /**
@@ -32,9 +74,6 @@ class RequestLogModel {
 
     const logs = await prisma.requestLog.findMany({
       where,
-      include: {
-        tenant: true,
-      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -81,9 +120,6 @@ class RequestLogModel {
     const where = this._buildWhereClause(query);
     const log = await prisma.requestLog.findFirst({
       where,
-      include: {
-        tenant: true,
-      },
     });
 
     if (!log) return null;
@@ -99,9 +135,6 @@ class RequestLogModel {
     
     const log = await prisma.requestLog.create({
       data: normalized,
-      include: {
-        tenant: true,
-      },
     });
 
     return this._transformToMongoFormat(log);
