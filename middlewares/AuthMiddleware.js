@@ -12,9 +12,15 @@ export default new class AuthMiddleware extends CoreController {
     }
 
     isAdmin = async (req, res, next) => {
-        const apiKey = CryptoHelper.hashKey(req.headers['x-admin-api-key'] ?? "");
+        const providedApiKey = req.headers['x-api-key'] ?? req.headers['x-admin-api-key'] ?? "";
+        const integrationSecret = process.env.ADMIN_UI_SECRET;
 
-        if (apiKey !== process.env.ADMIN_API_KEY) return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED });
+        // Admin UI flow: UI sends x-api-key with raw ADMIN_UI_SECRET value
+        if (integrationSecret && providedApiKey === integrationSecret) return next();
+
+        // Backward compatibility for existing admin key flow (hashed comparison)
+        const hashedApiKey = CryptoHelper.hashKey(providedApiKey);
+        if (hashedApiKey !== process.env.ADMIN_API_KEY) return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED });
 
         return next();
     }

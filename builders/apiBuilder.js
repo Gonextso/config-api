@@ -51,8 +51,8 @@ app.use(express.json());
 app.set('json spaces', 2);
 app.use((_, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-    res.setHeader('Access-Control-Allow-Header', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Header', 'Content-Type, Authorization, x-api-key');
     next();
 });
 app.use(RequestMiddleware.setTraceId);
