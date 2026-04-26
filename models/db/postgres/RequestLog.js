@@ -130,7 +130,8 @@ class RequestLogModel {
     }
 
     if (query.tenant) {
-      where.tenantId = typeof query.tenant === 'object' ? query.tenant._id || query.tenant.id : query.tenant;
+      const tenantId = typeof query.tenant === 'object' ? query.tenant._id || query.tenant.id : query.tenant;
+      where.tenant = { is: { id: tenantId } };
     }
 
     if (query.requestId) {
