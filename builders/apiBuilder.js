@@ -63,7 +63,7 @@ app.use(morgan(function (tokens, req, res) {
 }));
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.set('json spaces', 2);
 app.use((_, res, next) => {
