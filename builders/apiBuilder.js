@@ -22,6 +22,22 @@ logger.info2('Building Express API started');
 
 const app = express();
 const routePrefix = `/rest/${process.env.API_TYPE}/${process.env.VERSION}`;
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser calls (curl, server-to-server) and configured browser origins.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+};
 
 app.use(helmet());
 app.use(bodyParser.json({
@@ -46,13 +62,14 @@ app.use(morgan(function (tokens, req, res) {
     ].join(' '));
 }));
 
-app.use(cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.set('json spaces', 2);
 app.use((_, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE');
-    res.setHeader('Access-Control-Allow-Header', 'Content-Type, Authorization, x-api-key');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
     next();
 });
 app.use(RequestMiddleware.setTraceId);
