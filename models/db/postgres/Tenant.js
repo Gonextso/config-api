@@ -149,6 +149,7 @@ class TenantModel {
       createData.pricing = {
         create: {
           planKey: 'BASIC',
+          billingInterval: 'MONTHLY',
           orderLimit: 10,
           orderUsed: 0,
           productDetailsLimit: 500,
@@ -267,6 +268,7 @@ class TenantModel {
         upsert: {
           create: {
             planKey: 'BASIC',
+            billingInterval: 'MONTHLY',
             orderLimit: 10,
             orderUsed: 0,
             productDetailsLimit: 500,
@@ -554,6 +556,7 @@ class TenantModel {
       if (data.shopify.billing) {
         normalized.pricing = {
           planKey: data.shopify.billing.planKey || 'BASIC',
+          billingInterval: data.shopify.billing.billingInterval || 'MONTHLY',
           subscriptionId: data.shopify.billing.subscription?.id || null,
           subscriptionLineId: data.shopify.billing.subscription?.lineId || null,
           orderLimit: data.shopify.billing.limits?.order?.limit ?? 10,
@@ -846,6 +849,7 @@ class TenantModel {
       if (tenant.pricing) {
         result.shopify.billing = {
           planKey: tenant.pricing.planKey,
+          billingInterval: tenant.pricing.billingInterval ?? 'MONTHLY',
           subscription: {
             id: tenant.pricing.subscriptionId,
             lineId: tenant.pricing.subscriptionLineId,

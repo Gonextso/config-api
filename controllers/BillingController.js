@@ -2,6 +2,13 @@ import CoreController from '../core/CoreControler.js';
 import HttpStatusCodes from '../enums/HttpStatusCodes.js';
 import SystemCodes from '../enums/SystemCodes.js';
 import Tenant from '../models/db/postgres/Tenant.js';
+import { resolveSubscriptionPlan, computePeriodEndIso, planBillingLimits } from '../helpers/SubscriptionPlanMap.js';
+
+/** Normalize Shopify AppSubscription GIDs for comparison (handles escaped slashes in payloads). */
+function normalizeAppSubscriptionGid(id) {
+    if (id == null) return '';
+    return String(id).replace(/\\\//g, '/').trim();
+}
 
 export default new class BillingController extends CoreController {
     constructor() {
@@ -16,7 +23,8 @@ export default new class BillingController extends CoreController {
             return this.response(res, { status: HttpStatusCodes.BAD_REQUEST, info: "Missing app_subscription in request body" });
         }
 
-        const { status, name, admin_graphql_api_shop_id, admin_graphql_api_id, created_at } = req.body.app_subscription;
+        const appSubscription = req.body.app_subscription;
+        const { status, name, admin_graphql_api_shop_id, admin_graphql_api_id, created_at } = appSubscription;
         
         this.logger.info2(`[BillingController] Parsing subscription data: status=${status}, name=${name}, admin_graphql_api_shop_id=${admin_graphql_api_shop_id}, admin_graphql_api_id=${admin_graphql_api_id}, created_at=${created_at}`);
         
@@ -49,34 +57,55 @@ export default new class BillingController extends CoreController {
                 });
             }
 
-            const planKey = name.toUpperCase();
-            this.logger.info2(`[BillingController] Plan key (uppercase): ${planKey}`);
-            
-            const planConfig = SystemCodes.BILLING_PLANS[planKey];
-            const availablePlans = Object.keys(SystemCodes.BILLING_PLANS);
-            this.logger.info2(`[BillingController] Available plans: ${availablePlans.join(', ')}`);
-            
-            if (!planConfig) {
-                this.logger.error(`[BillingController] Invalid plan key: ${planKey}. Available plans: ${availablePlans.join(', ')}`);
-                return this.response(res, { 
+            const resolved = resolveSubscriptionPlan(name);
+            this.logger.info2(`[BillingController] Resolved subscription name "${name}": ${JSON.stringify(resolved)}`);
+
+            if (!resolved) {
+                this.logger.error(`[BillingController] Unknown subscription plan name: ${name}`);
+                return this.response(res, {
                     status: HttpStatusCodes.BAD_REQUEST,
-                    info: `Invalid plan key: ${planKey}`
+                    info: `Unknown subscription plan name: ${name}`,
                 });
             }
-            
+
+            const planConfig = SystemCodes.BILLING_PLANS[resolved.planKey];
+            const availablePlans = Object.keys(SystemCodes.BILLING_PLANS);
+            this.logger.info2(`[BillingController] Available plan tiers: ${availablePlans.join(', ')}`);
+
+            if (!planConfig) {
+                this.logger.error(`[BillingController] Invalid plan tier: ${resolved.planKey}`);
+                return this.response(res, {
+                    status: HttpStatusCodes.BAD_REQUEST,
+                    info: `Invalid plan tier: ${resolved.planKey}`,
+                });
+            }
+
             this.logger.info2(`[BillingController] Plan config found: KEY=${planConfig.KEY}, LIMITS=${JSON.stringify(planConfig.LIMITS)}`);
-            
-            const updateData = { 
+
+            const { orderLimit, productDetailsLimit } = planBillingLimits(planConfig, resolved.billingInterval);
+            this.logger.info2(
+                `[BillingController] Applied limits for ${resolved.billingInterval}: order=${orderLimit}, product_details=${productDetailsLimit}`
+            );
+
+            const periodStartIso = created_at ? new Date(created_at).toISOString() : new Date().toISOString();
+            const periodEndIso = computePeriodEndIso({
+                billingInterval: resolved.billingInterval,
+                periodStart: created_at,
+                appSubscription,
+            });
+
+            const updateData = {
                 "shopify.billing.planKey": planConfig.KEY,
+                "shopify.billing.billingInterval": resolved.billingInterval,
                 "shopify.billing.subscription.id": admin_graphql_api_id,
-                "shopify.billing.limits.order.limit": planConfig.LIMITS.ORDER,
-                "shopify.billing.limits.product_details.limit": planConfig.LIMITS.PRODUCT_DETAILS,
-                "shopify.billing.periodStart": created_at,
-                "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
-                $unset: { 
+                "shopify.billing.limits.order.limit": orderLimit,
+                "shopify.billing.limits.product_details.limit": productDetailsLimit,
+                "shopify.billing.periodStart": periodStartIso,
+                "shopify.billing.periodEnd": periodEndIso,
+                $unset: {
                     "shopify.billing.pendingNonce": 1,
-                    "shopify.billing.pendingPlanKey":  1 
-                }
+                    "shopify.billing.pendingPlanKey": 1,
+                },
             };
 
             this.logger.info2(`[BillingController] Updating tenant ${tenant.name} with active billing data: ${JSON.stringify(updateData)}`);
@@ -102,6 +131,7 @@ export default new class BillingController extends CoreController {
                 "shopify.billing.isBlocked": true,
                 "shopify.billing.periodStart": new Date().toISOString(),
                 "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
+                "shopify.billing.billingInterval": "MONTHLY",
                 $unset: { 
                     "shopify.billing.pendingNonce": 1,
                     "shopify.billing.pendingPlanKey":  1 
@@ -118,29 +148,52 @@ export default new class BillingController extends CoreController {
             this.logger.info2(`[BillingController] Tenant ${tenant.name} billing blocked successfully`);
         } else if (status === "CANCELLED") {
             this.logger.info2(`[BillingController] Billing cancelled for ${tenant.name}`);
-            
-            const updateData = {
-                "shopify.billing.isBlocked": false,
-                "shopify.billing.planKey": SystemCodes.BILLING_PLANS.BASIC.KEY,
-                "shopify.billing.subscription.id": null,
-                "shopify.billing.limits.order.limit": SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
-                "shopify.billing.limits.product_details.limit": SystemCodes.BILLING_PLANS.BASIC.LIMITS.PRODUCT_DETAILS,
-                "shopify.billing.periodStart": new Date().toISOString(),
-                "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
-                $unset: { 
-                    "shopify.billing.pendingNonce": 1,
-                    "shopify.billing.pendingPlanKey":  1 
-                }
-            };
 
-            this.logger.info2(`[BillingController] Updating tenant ${tenant.name} with cancelled billing data: ${JSON.stringify(updateData)}`);
-            
-            await Tenant.updateOne(
-                { id: tenant.id },
-                updateData
-            );
-            
-            this.logger.info2(`[BillingController] Tenant ${tenant.name} billing cancelled successfully`);
+            const storedSubId = tenant.shopify?.billing?.subscription?.id;
+            const cancelledSubId = admin_graphql_api_id;
+            const ns = normalizeAppSubscriptionGid(storedSubId);
+            const nw = normalizeAppSubscriptionGid(cancelledSubId);
+
+            // Plan değişiminde (ör. yıllık → aylık) yeni abonelik ACTIVE olduktan sonra eski abonelik
+            // CANCELLED gelebilir; o webhook tenant'taki güncel subscription id ile eşleşmez — BASIC'e düşürme.
+            if (ns && nw && ns !== nw) {
+                this.logger.info2(
+                    `[BillingController] Skipping full cancel reset for ${tenant.name}: cancelled subscription (${nw}) is not current tenant subscription (${ns})`
+                );
+                await Tenant.updateOne(
+                    { id: tenant.id },
+                    {
+                        $unset: {
+                            "shopify.billing.pendingNonce": 1,
+                            "shopify.billing.pendingPlanKey": 1,
+                        },
+                    }
+                );
+            } else {
+                const updateData = {
+                    "shopify.billing.isBlocked": false,
+                    "shopify.billing.planKey": SystemCodes.BILLING_PLANS.BASIC.KEY,
+                    "shopify.billing.billingInterval": "MONTHLY",
+                    "shopify.billing.subscription.id": null,
+                    "shopify.billing.limits.order.limit": SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
+                    "shopify.billing.limits.product_details.limit": SystemCodes.BILLING_PLANS.BASIC.LIMITS.PRODUCT_DETAILS,
+                    "shopify.billing.periodStart": new Date().toISOString(),
+                    "shopify.billing.periodEnd": new Date(Date.now() + 30 * 864e5).toISOString(),
+                    $unset: {
+                        "shopify.billing.pendingNonce": 1,
+                        "shopify.billing.pendingPlanKey": 1,
+                    },
+                };
+
+                this.logger.info2(`[BillingController] Updating tenant ${tenant.name} with cancelled billing data: ${JSON.stringify(updateData)}`);
+
+                await Tenant.updateOne(
+                    { id: tenant.id },
+                    updateData
+                );
+
+                this.logger.info2(`[BillingController] Tenant ${tenant.name} billing cancelled successfully`);
+            }
         } else {
             this.logger.info2(`[BillingController] Billing got no action for ${tenant.name} with status ${status}`);
         }

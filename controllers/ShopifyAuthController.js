@@ -15,6 +15,7 @@ import ShopifyCache from "../cache/ShopifyCache.js";
 import SystemCodes from "../enums/SystemCodes.js";
 import ShopifyBillingBusiness from "../business/shopify/BillingBusiness.js";
 import LogHelper from "../helpers/LogHelper.js";
+import { resolveSubscriptionPlan, planBillingLimits } from "../helpers/SubscriptionPlanMap.js";
 
 export default new class ShopifyAuthController extends CoreController {
     constructor() {
@@ -150,10 +151,16 @@ export default new class ShopifyAuthController extends CoreController {
                 const billingBusiness = new ShopifyBillingBusiness({ shopify: { name: newTenant.name, decryptedApiKey: accessToken } });
                 const activeSubscription = await billingBusiness.getActiveSubscription();
 
-                const planKey = activeSubscription 
-                    ? (SystemCodes.BILLING_PLANS[activeSubscription.name.toUpperCase()]?.KEY ?? SystemCodes.BILLING_PLANS.BASIC.KEY)
+                const resolvedPlan = activeSubscription
+                    ? resolveSubscriptionPlan(activeSubscription.name)
+                    : null;
+                const planKey = resolvedPlan
+                    ? resolvedPlan.planKey
                     : SystemCodes.BILLING_PLANS.BASIC.KEY;
-                const planConfig = SystemCodes.BILLING_PLANS[planKey];
+                const billingInterval = resolvedPlan?.billingInterval ?? "MONTHLY";
+                const planConfig =
+                    SystemCodes.BILLING_PLANS[planKey] ?? SystemCodes.BILLING_PLANS.BASIC;
+                const { orderLimit, productDetailsLimit } = planBillingLimits(planConfig, billingInterval);
 
                 const tenantDto = {
                     name: newTenant.name,
@@ -165,18 +172,19 @@ export default new class ShopifyAuthController extends CoreController {
                         apiKey: { ...CryptoHelper.encrypt(accessToken) },
                         billing: activeSubscription ? {
                             planKey: planKey,
+                            billingInterval,
                             subscription: {
                                 id: activeSubscription.id ?? ""
                             },
-                            tokenLimit: planConfig?.TOKEN_LIMIT ?? SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
+                            tokenLimit: planConfig.TOKEN_LIMIT ?? SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
                             tokenUsed: 0,
                             limits: {
                                 order: {
-                                    limit: planConfig?.LIMITS?.ORDER ?? SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
+                                    limit: orderLimit,
                                     used: 0
                                 },
                                 product_details: {
-                                    limit: planConfig?.LIMITS?.PRODUCT_DETAILS ?? SystemCodes.BILLING_PLANS.BASIC.LIMITS.PRODUCT_DETAILS,
+                                    limit: productDetailsLimit,
                                     used: 0
                                 }
                             },
