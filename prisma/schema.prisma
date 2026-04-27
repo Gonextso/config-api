@@ -34,6 +34,13 @@ enum PlanKey {
   @@schema("tenants")
 }
 
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+
+  @@schema("billings")
+}
+
 // Tenants Schema
 model TenantInfo {
   id          String   @id @default(uuid())
@@ -163,9 +170,10 @@ model AuthNebim {
 
 // Billings Schema
 model PricingInfo {
-  id                  String   @id @default(uuid())
-  tenantId            String   @unique @map("tenant_id")
-  planKey             PlanKey  @map("plan_key")
+  id                  String           @id @default(uuid())
+  tenantId            String           @unique @map("tenant_id")
+  planKey             PlanKey          @map("plan_key")
+  billingInterval     BillingInterval  @default(MONTHLY) @map("billing_interval")
   subscriptionId      String?  @map("subscription_id")
   subscriptionLineId  String?  @map("subscription_line_id")
   orderLimit          Int      @default(10) @map("order_limit")
