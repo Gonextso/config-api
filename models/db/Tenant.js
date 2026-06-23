@@ -77,6 +77,17 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                             }
                         },
                         isActive: { type: Boolean, default: false }
+                    },
+                    find_in_store: {
+                        interval: { type: String, default: "*/30 * * * *" },
+                        startDate: {
+                            type: String,
+                            default: function () {
+                                const interval = moment.duration(30, "minutes");
+                                return moment().subtract(interval).toISOString();
+                            }
+                        },
+                        isActive: { type: Boolean, default: false }
                     }
                 },
                 order: {
@@ -166,6 +177,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                 details: { type: String, default: "sp_INV_GetProductDetails" },
                 inventory: { type: String, default: "sp_INV_GetProductInventory" },
                 price: { type: String, default: "sp_INV_GetProductPrice" },
+                findInStore: { type: String, default: "sp_GO_FindInStore" },
             },
             customer: {
                 check: { type: String, default: "qry_B2C_GetCustomer" },
