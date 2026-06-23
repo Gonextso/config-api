@@ -56,6 +56,11 @@ export default new class TenantController extends CoreController {
                     schedule: schedules?.product?.inventory
                 },
                 {
+                    key: "product.find_in_store",
+                    label: "Mağazada Bul",
+                    schedule: schedules?.product?.find_in_store
+                },
+                {
                     key: "order.create_and_cancel",
                     label: "Sipariş",
                     schedule: schedules?.order?.create_and_cancel
@@ -150,6 +155,15 @@ export default new class TenantController extends CoreController {
                 info: "Schedules cannot be patched when there is no active plan on store",
                 status: HttpStatusCodes.BAD_REQUEST
             });
+
+        const findInStoreActive = updateData?.shopify?.schedules?.nebim?.product?.find_in_store?.isActive;
+        if (findInStoreActive === true && tenant.shopify.billing.planKey !== 'ENTERPRISE') {
+            return this.response(res, {
+                content: tenant,
+                info: "Mağazada Bul senkronizasyonu yalnızca ENTERPRISE planda etkinleştirilebilir",
+                status: HttpStatusCodes.BAD_REQUEST
+            });
+        }
 
         if (updateData?.shopify?.billing) delete updateData.shopify.billing;
 
