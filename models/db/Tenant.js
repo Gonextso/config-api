@@ -140,7 +140,8 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             authTag: { type: String, select: false }
         },
         product: {
-            categoryKeysFrom: { type: [String], default: [] }
+            categoryKeysFrom: { type: [String], default: [] },
+            barcodeTypeCode: { type: String, default: "EAN13" }
         },
         customer: {
             phoneType: { type: String, default: "7" },

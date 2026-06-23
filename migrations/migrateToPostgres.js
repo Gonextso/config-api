@@ -218,6 +218,7 @@ async function migrateTenants() {
             salesUrl: tenant.nebim.salesUrl,
             isActive: tenant.nebim.isActive ?? true,
             productCategoryKeysFrom: tenant.nebim.product?.categoryKeysFrom || [],
+            productBarcodeTypeCode: (tenant.nebim.product?.barcodeTypeCode || 'EAN13').trim(),
             customerPhoneType: tenant.nebim.customer?.phoneType || '7',
             customerAddressType: tenant.nebim.customer?.addressType || '1',
             customerConfirmationFormTypeCode: tenant.nebim.customer?.confirmationFormTypeCode,
