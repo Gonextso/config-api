@@ -12,6 +12,7 @@
     "moment": "^2.30.1",
     "mongoose": "^8.13.2",
     "morgan": "^1.10.0",
+    "prisma": "^6.19.1",
     "redis": "^5.5.6"
   },
   "name": "template-node-api",
@@ -24,14 +25,13 @@
     "@babel/preset-env": "^7.23.0",
     "babel-jest": "^29.7.0",
     "jest": "^29.7.0",
-    "nodemon": "^3.1.9",
-    "prisma": "^6.19.1"
+    "nodemon": "^3.1.9"
   },
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
-    "prisma:setup": "npm run prisma:push && npm run prisma:generate",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:setup": "node scripts/prisma-setup.mjs",
     "migrate:mongo-to-postgres": "node migrations/migrateToPostgres.js",
     "prestart": "npm run prisma:setup && npm run migrate:mongo-to-postgres",
     "start": "node app.js",

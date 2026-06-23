@@ -240,6 +240,7 @@ async function migrateTenants() {
             procProductInventory: tenant.nebim.procNames?.product?.inventory || 'sp_INV_GetProductInventory',
             procProductPrice: tenant.nebim.procNames?.product?.price || 'sp_INV_GetProductPrice',
             procFindStoreInventory: tenant.nebim.procNames?.product?.findInStore || 'sp_GO_FindInStore',
+            procGetStoreInfo: tenant.nebim.procNames?.product?.storeInfo || 'sp_GO_GetStoreInfo',
             procCustomerCheck: tenant.nebim.procNames?.customer?.check || 'qry_B2C_GetCustomer',
             procOrderStatus: tenant.nebim.procNames?.order?.status || 'sp_INV_OrderStatus',
             procDefaultsAddressCodes: tenant.nebim.procNames?.defaults?.addressCodes || 'sp_INV_GetAddressList',
