@@ -153,6 +153,14 @@ export default new class TenantController extends CoreController {
 
         if (updateData?.shopify?.billing) delete updateData.shopify.billing;
 
+        if (updateData.nebim?.product?.barcodeTypeCode !== undefined
+            && !updateData.nebim.product.barcodeTypeCode?.trim()) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Barkod Tipi Kodu boş olamaz",
+            });
+        }
+
         // Store encrypted password BEFORE merge (it might get lost during merge)
         const passwordToSave = updateData.nebim?.password || null;
 
@@ -175,6 +183,16 @@ export default new class TenantController extends CoreController {
             if (!mergedData.nebim) mergedData.nebim = {};
             mergedData.nebim.password = passwordToSave;
         }
+
+        const mergedBarcodeTypeCode = mergedData.nebim?.product?.barcodeTypeCode?.trim();
+        if (!mergedBarcodeTypeCode) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Barkod Tipi Kodu boş olamaz",
+            });
+        }
+        if (!mergedData.nebim.product) mergedData.nebim.product = {};
+        mergedData.nebim.product.barcodeTypeCode = mergedBarcodeTypeCode;
         
         await Tenant.updateOne({ id: tenant.id }, mergedData);
         

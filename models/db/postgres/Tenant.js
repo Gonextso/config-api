@@ -128,6 +128,7 @@ class TenantModel {
           blockProductGenerationWhenOff: false,
           isCargoService: false,
           productCategoryKeysFrom: [],
+          productBarcodeTypeCode: 'EAN13',
           customerPhoneType: '7',
           customerAddressType: '1',
           customerConsentSource: 'HS_WEB',
@@ -246,6 +247,7 @@ class TenantModel {
             blockProductGenerationWhenOff: false,
             isCargoService: false,
             productCategoryKeysFrom: [],
+            productBarcodeTypeCode: 'EAN13',
             customerPhoneType: '7',
             customerAddressType: '1',
             customerConsentSource: 'HS_WEB',
@@ -603,6 +605,7 @@ class TenantModel {
         cargoItemCode: data.nebim.order?.cargoItemCode ?? data.nebim.cargoItemCode,
         isCargoService: data.nebim.order?.isCargoService ?? data.nebim.isCargoService ?? false,
         productCategoryKeysFrom: data.nebim.product?.categoryKeysFrom || [],
+        productBarcodeTypeCode: (data.nebim.product?.barcodeTypeCode || 'EAN13').trim(),
         customerPhoneType: data.nebim.customer?.phoneType || '7',
         customerAddressType: data.nebim.customer?.addressType || '1',
         customerConfirmationFormTypeCode: data.nebim.customer?.confirmationFormTypeCode,
@@ -921,6 +924,7 @@ class TenantModel {
         blockProductGenerationWhenOff: tenant.nebim.blockProductGenerationWhenOff ?? false,
         product: {
           categoryKeysFrom: tenant.nebim.productCategoryKeysFrom,
+          barcodeTypeCode: tenant.nebim.productBarcodeTypeCode,
         },
         customer: {
           phoneType: tenant.nebim.customerPhoneType,
