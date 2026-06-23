@@ -73,7 +73,7 @@ export default class {
             TOKEN_LIMIT: 1500,
             LIMITS: {
                 ORDER: 100,
-                PRODUCT_DETAILS: 2500
+                PRODUCT_DETAILS: 5000
             },
             REDENTION: {
                 LOG: 10
