@@ -5,6 +5,8 @@ import Tenant from "../models/db/postgres/Tenant.js";
 import OrderSyncBatch from "../models/db/postgres/OrderSyncBatch.js";
 import RequestLog from "../models/db/postgres/RequestLog.js";
 import UuidHelper from "../helpers/UuidHelper.js";
+import ObjectHelper from "../helpers/ObjectHelper.js";
+import { isFindInStorePlanAllowed, findInStoreScheduleDisableUpdate } from "../helpers/FindInStorePlanGuard.js";
 
 export default new class AdminController extends CoreController {
     constructor() {
@@ -202,9 +204,15 @@ export default new class AdminController extends CoreController {
             });
         }
 
+        const updatePayload = { shopify: { billing: incomingBilling } };
+        const planKey = incomingBilling.planKey ?? tenant.shopify?.billing?.planKey;
+        if (planKey && !isFindInStorePlanAllowed(planKey)) {
+            ObjectHelper.deepMerge(updatePayload, findInStoreScheduleDisableUpdate());
+        }
+
         const updated = await Tenant.updateOne(
             { id: tenant.id },
-            { shopify: { billing: incomingBilling } },
+            updatePayload,
         );
 
         return this.response(res, {
