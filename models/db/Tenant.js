@@ -178,6 +178,7 @@ export default mongoose.model('Tenant', new mongoose.Schema({
                 inventory: { type: String, default: "sp_INV_GetProductInventory" },
                 price: { type: String, default: "sp_INV_GetProductPrice" },
                 findInStore: { type: String, default: "sp_GO_FindInStore" },
+                storeInfo: { type: String, default: "sp_GO_GetStoreInfo" },
             },
             customer: {
                 check: { type: String, default: "qry_B2C_GetCustomer" },
