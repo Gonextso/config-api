@@ -3,6 +3,7 @@ import Tenant from '../models/db/postgres/Tenant.js';
 import CryptoHelper from '../helpers/CryptoHelper.js';
 import HttpStatusCodes from '../enums/HttpStatusCodes.js';
 import ObjectHelper from '../helpers/ObjectHelper.js';
+import { isFindInStorePlanAllowed } from '../helpers/FindInStorePlanGuard.js';
 import NebimCache from '../cache/NebimCache.js';
 import ShopifyCache from '../cache/ShopifyCache.js';
 import SuccessOrder from '../models/db/postgres/SuccessOrder.js';
@@ -207,6 +208,13 @@ export default new class TenantController extends CoreController {
         }
         if (!mergedData.nebim.product) mergedData.nebim.product = {};
         mergedData.nebim.product.barcodeTypeCode = mergedBarcodeTypeCode;
+
+        if (
+            !isFindInStorePlanAllowed(mergedData.shopify?.billing?.planKey)
+            && mergedData.shopify?.schedules?.nebim?.product?.find_in_store?.isActive
+        ) {
+            mergedData.shopify.schedules.nebim.product.find_in_store.isActive = false;
+        }
         
         await Tenant.updateOne({ id: tenant.id }, mergedData);
         

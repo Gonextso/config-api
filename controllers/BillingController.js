@@ -3,6 +3,7 @@ import HttpStatusCodes from '../enums/HttpStatusCodes.js';
 import SystemCodes from '../enums/SystemCodes.js';
 import Tenant from '../models/db/postgres/Tenant.js';
 import { resolveSubscriptionPlan, computePeriodEndIso, planBillingLimits } from '../helpers/SubscriptionPlanMap.js';
+import { isFindInStorePlanAllowed, findInStoreScheduleDisableUpdate } from '../helpers/FindInStorePlanGuard.js';
 
 /** Normalize Shopify AppSubscription GIDs for comparison (handles escaped slashes in payloads). */
 function normalizeAppSubscriptionGid(id) {
@@ -114,6 +115,11 @@ export default new class BillingController extends CoreController {
                 { id: tenant.id },
                 updateData
             );
+
+            if (!isFindInStorePlanAllowed(planConfig.KEY)) {
+                await Tenant.updateOne({ id: tenant.id }, findInStoreScheduleDisableUpdate());
+                this.logger.info2(`[BillingController] Mağazada Bul schedule disabled for ${tenant.name} (plan: ${planConfig.KEY})`);
+            }
             
             this.logger.info2(`[BillingController] Tenant ${tenant.name} billing activated successfully`);
         } else if (
@@ -144,6 +150,8 @@ export default new class BillingController extends CoreController {
                 { id: tenant.id },
                 updateData
             );
+
+            await Tenant.updateOne({ id: tenant.id }, findInStoreScheduleDisableUpdate());
             
             this.logger.info2(`[BillingController] Tenant ${tenant.name} billing blocked successfully`);
         } else if (status === "CANCELLED") {
@@ -191,6 +199,8 @@ export default new class BillingController extends CoreController {
                     { id: tenant.id },
                     updateData
                 );
+
+                await Tenant.updateOne({ id: tenant.id }, findInStoreScheduleDisableUpdate());
 
                 this.logger.info2(`[BillingController] Tenant ${tenant.name} billing cancelled successfully`);
             }
