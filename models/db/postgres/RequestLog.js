@@ -172,7 +172,15 @@ class RequestLogModel {
     }
 
     if (query.traceId) {
-      where.traceId = query.traceId;
+      where.traceId = { contains: query.traceId, mode: 'insensitive' };
+    }
+
+    if (query.body) {
+      where.body = { contains: query.body, mode: 'insensitive' };
+    }
+
+    if (query.response) {
+      where.response = { contains: query.response, mode: 'insensitive' };
     }
 
     if (query.method) {
