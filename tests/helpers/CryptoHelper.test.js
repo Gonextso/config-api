@@ -55,6 +55,15 @@ describe('CryptoHelper', () => {
       expect(CryptoHelper.decrypt(encrypted1)).toBe(text);
       expect(CryptoHelper.decrypt(encrypted2)).toBe(text);
     });
+
+    it('should throw a clear error when payload is missing or incomplete', () => {
+      const expectedMessage = /Encrypted payload is missing or incomplete/;
+
+      expect(() => CryptoHelper.decrypt(undefined)).toThrow(expectedMessage);
+      expect(() => CryptoHelper.decrypt(null)).toThrow(expectedMessage);
+      expect(() => CryptoHelper.decrypt({})).toThrow(expectedMessage);
+      expect(() => CryptoHelper.decrypt({ encryptedData: 'ab', iv: 'cd' })).toThrow(expectedMessage);
+    });
   });
 
   describe('hashKey', () => {

@@ -6,8 +6,6 @@ export const SUBSCRIPTION_PLAN_MAP = Object.freeze({
     BASIC: { planKey: 'BASIC', billingInterval: 'MONTHLY' },
     COMMUNITY: { planKey: 'COMMUNITY', billingInterval: 'MONTHLY' },
     COMMUNITY_ANNUAL: { planKey: 'COMMUNITY', billingInterval: 'ANNUAL' },
-    PRO: { planKey: 'PRO', billingInterval: 'MONTHLY' },
-    PRO_ANNUAL: { planKey: 'PRO', billingInterval: 'ANNUAL' },
     ENTERPRISE: { planKey: 'ENTERPRISE', billingInterval: 'MONTHLY' },
     ENTERPRISE_ANNUAL: { planKey: 'ENTERPRISE', billingInterval: 'ANNUAL' },
 });

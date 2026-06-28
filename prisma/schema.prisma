@@ -11,7 +11,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["tenants", "billings", "sync", "logs", "auths", "defaults", "schedules"]
+  schemas  = ["tenants", "billings", "sync", "logs", "auths", "defaults", "schedules", "system"]
 }
 
 // Enums
@@ -22,6 +22,7 @@ enum ProcessType {
   SYNC_FAILED_ORDERS
   SYNC_ORDER_STATUS
   TOKEN_CHECK
+  SETUP_TEST_ORDER
 
   @@schema("tenants")
 }
@@ -29,7 +30,6 @@ enum ProcessType {
 enum PlanKey {
   BASIC
   COMMUNITY
-  PRO
   ENTERPRISE
 
   @@schema("tenants")
@@ -40,6 +40,16 @@ enum BillingInterval {
   ANNUAL
 
   @@schema("billings")
+}
+
+// Lowercase on purpose: values map 1:1 to Polaris Banner `tone`
+enum NotificationTone {
+  info
+  warning
+  critical
+  success
+
+  @@schema("system")
 }
 
 // Tenants Schema
@@ -58,10 +68,12 @@ model TenantInfo {
   nebimAuth   AuthNebim?
   pricing     PricingInfo?
   schedules   ScheduleTenant?
+  setup       TenantSetup?
   syncBatches SyncBatch[]
   failedOrders SyncFailedOrder[]
   successOrders SyncSuccessOrder[]
   requestLogs RequestLog[]
+  notificationTargets SystemNotificationTenant[]
 
   @@map("info")
   @@schema("tenants")
@@ -77,7 +89,10 @@ model TenantShopify {
   isInventoryTracking   Boolean  @default(true) @map("is_inventory_tracking")
   isColorOptionFirst    Boolean  @default(true) @map("is_color_option_first")
   isEnterprise          Boolean  @default(false) @map("is_enterprise")
+  isShopifyPlus         Boolean  @default(false) @map("is_shopify_plus")
   isActive              Boolean  @default(true) @map("is_active")
+  currencyCode          String?  @map("currency_code")
+  countryCode           String?  @map("country_code")
   skuFieldsNebim        String[] @map("sku_fields_nebim")
   skuFieldsSeparator    String   @default("-") @map("sku_fields_separator")
   createdAt             DateTime @default(now()) @map("created_at")
@@ -103,6 +118,13 @@ model TenantNebim {
   blockProductGenerationWhenOff Boolean  @default(false) @map("block_product_generation_when_off")
   productCategoryKeysFrom       String[] @map("product_category_keys_from")
   productBarcodeTypeCode        String   @default("EAN13") @map("product_barcode_type_code")
+  productPriceSellCode          String?  @map("product_price_sell_code")
+  productPriceCompareCode       String?  @map("product_price_compare_code")
+  productResponsibilityAreaCode String?  @map("product_responsibility_area_code")
+  productIsColorBased           Boolean  @default(false) @map("product_is_color_based")
+  productUseInternetOnVariant   Boolean  @default(false) @map("product_use_internet_on_variant")
+  productUsedSeparatorOnColorAndItem String? @map("product_used_separator_on_color_and_item")
+  productUsedSeparatorOnColorAndItemDescriptions String? @map("product_used_separator_on_color_and_item_descriptions")
   customerPhoneType             String   @default("7") @map("customer_phone_type")
   customerAddressType           String   @default("1") @map("customer_address_type")
   customerConfirmationFormTypeCode    String?  @map("customer_confirmation_form_type_code")
@@ -119,6 +141,9 @@ model TenantNebim {
   orderCompany                  String?  @map("order_company")
   orderWarehouse                String?  @map("order_warehouse")
   orderCancelReason             String?  @map("order_cancel_reason")
+  orderIsMicroExport            Boolean  @default(false) @map("order_is_micro_export")
+  orderIncotermCode1            String?  @map("order_incoterm_code1")
+  orderIncotermCode2            String?  @map("order_incoterm_code2")
   procProductDetails            String   @default("sp_GO_GetProductDetails") @map("proc_product_details")
   procProductInventory          String   @default("sp_GO_GetProductInventory") @map("proc_product_inventory")
   procProductPrice              String   @default("sp_GO_GetProductPrice") @map("proc_product_price")
@@ -127,12 +152,32 @@ model TenantNebim {
   procCustomerCheck             String   @default("sp_GO_GetCustomer") @map("proc_customer_check")
   procOrderStatus               String   @default("sp_GO_OrderStatus") @map("proc_order_status")
   procDefaultsAddressCodes      String   @default("sp_GO_GetAddressList") @map("proc_defaults_address_codes")
+  procInputValidation           String   @default("sp_GO_InputValidator") @map("proc_input_validation")
   createdAt                     DateTime @default(now()) @map("created_at")
   updatedAt                     DateTime @updatedAt @map("updated_at")
 
   tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("nebim")
+  @@schema("tenants")
+  @@index([tenantId])
+}
+
+model TenantSetup {
+  id              String   @id @default(uuid())
+  tenantId        String   @unique @map("tenant_id")
+  setupCompleted  Boolean  @default(false) @map("setup_completed")
+  stepConnection  Boolean  @default(false) @map("step_connection")
+  stepValidation  Boolean  @default(false) @map("step_validation")
+  stepCustomer    Boolean  @default(false) @map("step_customer")
+  stepProduct     Boolean  @default(false) @map("step_product")
+  stepOrder       Boolean  @default(false) @map("step_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("setup")
   @@schema("tenants")
   @@index([tenantId])
 }
@@ -180,9 +225,9 @@ model PricingInfo {
   billingInterval     BillingInterval  @default(MONTHLY) @map("billing_interval")
   subscriptionId      String?  @map("subscription_id")
   subscriptionLineId  String?  @map("subscription_line_id")
-  orderLimit          Int      @default(10) @map("order_limit")
+  orderLimit          Int      @default(5) @map("order_limit")
   orderUsed           Int      @default(0) @map("order_used")
-  productDetailsLimit Int      @default(500) @map("product_details_limit")
+  productDetailsLimit Int      @default(100) @map("product_details_limit")
   productDetailsUsed  Int      @default(0) @map("product_details_used")
   periodStart         DateTime @map("period_start")
   periodEnd           DateTime @map("period_end")
@@ -218,6 +263,10 @@ model ScheduleTenant {
   nebimProductFindInStoreInterval   String   @default("*/30 * * * *") @map("nebim_product_find_in_store_interval")
   nebimProductFindInStoreStartDate  DateTime @default(now()) @map("nebim_product_find_in_store_start_date")
   nebimProductFindInStoreIsActive   Boolean  @default(false) @map("nebim_product_find_in_store_is_active")
+  nebimProductMarketSyncInterval     String    @default("0 0 * * *") @map("nebim_product_market_sync_interval")
+  nebimProductMarketSyncIsActive     Boolean   @default(false) @map("nebim_product_market_sync_is_active")
+  nebimProductMarketPriceStartDate   DateTime? @map("nebim_product_market_price_start_date")
+  nebimProductMarketContentStartDate DateTime? @map("nebim_product_market_content_start_date")
   redentionLogsInterval              String   @default("0 0 * * *") @map("redention_logs_interval")
   redentionLogsStartDate             DateTime @map("redention_logs_start_date")
   redentionLogsIsActive              Boolean  @default(true) @map("redention_logs_is_active")
@@ -335,6 +384,7 @@ model RequestLog {
   traceId       String   @map("trace_id")
   transactionId String?  @map("transaction_id")
   isError       Boolean? @map("is_error")
+  businessLayer String?  @map("business_layer")
   createdAt     DateTime @default(now()) @map("created_at")
 
   tenant TenantInfo @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -344,6 +394,7 @@ model RequestLog {
   @@index([tenantId])
   @@index([traceId])
   @@index([transactionId])
+  @@index([businessLayer])
 }
 
 model SyncBatchLog {
@@ -360,4 +411,37 @@ model SyncBatchLog {
   @@map("batch_log")
   @@schema("sync")
   @@index([syncBatchId])
+}
+
+// System Schema
+model SystemNotification {
+  id        String           @id @default(uuid())
+  title     String
+  message   String           @db.Text
+  tone      NotificationTone @default(info)
+  isActive  Boolean          @default(false) @map("is_active")
+  showToAll Boolean          @default(false) @map("show_to_all")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  tenants SystemNotificationTenant[]
+
+  @@map("notifications")
+  @@schema("system")
+  @@index([isActive])
+}
+
+model SystemNotificationTenant {
+  id             String   @id @default(uuid())
+  notificationId String   @map("notification_id")
+  tenantId       String   @map("tenant_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  notification SystemNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  tenant       TenantInfo         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("notification_tenants")
+  @@schema("system")
+  @@unique([notificationId, tenantId])
+  @@index([tenantId])
 }

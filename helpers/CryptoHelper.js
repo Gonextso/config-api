@@ -14,7 +14,12 @@ export default class CryptoHelper {
         return { encryptedData: encrypted, iv: iv.toString('hex'), authTag, hash: this.hashKey(text) };
     }
 
-    static decrypt = ({ encryptedData, iv, authTag }) => {
+    static decrypt = (payload) => {
+        if (!payload?.encryptedData || !payload?.iv || !payload?.authTag) {
+            throw new Error("Encrypted payload is missing or incomplete (encryptedData/iv/authTag required).");
+        }
+
+        const { encryptedData, iv, authTag } = payload;
         const decipher = crypto.createDecipheriv(algorithm, key, Buffer.from(iv, 'hex'));
         decipher.setAuthTag(Buffer.from(authTag, 'hex'));
 

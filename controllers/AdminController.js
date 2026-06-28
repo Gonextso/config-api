@@ -1,12 +1,14 @@
 import CoreController from "../core/CoreControler.js";
 import HttpStatusCodes from "../enums/HttpStatusCodes.js";
+import SystemCodes from "../enums/SystemCodes.js";
 import CryptoHelper from "../helpers/CryptoHelper.js";
 import Tenant from "../models/db/postgres/Tenant.js";
 import OrderSyncBatch from "../models/db/postgres/OrderSyncBatch.js";
 import RequestLog from "../models/db/postgres/RequestLog.js";
+import Notification from "../models/db/postgres/Notification.js";
 import UuidHelper from "../helpers/UuidHelper.js";
 import ObjectHelper from "../helpers/ObjectHelper.js";
-import { isFindInStorePlanAllowed, findInStoreScheduleDisableUpdate } from "../helpers/FindInStorePlanGuard.js";
+import { isFindInStorePlanAllowed, findInStoreScheduleDisableUpdate, marketSyncScheduleDisableUpdate } from "../helpers/FindInStorePlanGuard.js";
 import { applyTenantPatch, TenantPatchError } from "../helpers/TenantPatchHelper.js";
 
 export default new class AdminController extends CoreController {
@@ -117,11 +119,13 @@ export default new class AdminController extends CoreController {
             traceId: req.query.traceId || req.query.trace_id || undefined,
             body: req.query.body || undefined,
             response: req.query.response || undefined,
+            businessLayer: req.query.businessLayer || undefined,
         };
 
-        const [data, urls] = await Promise.all([
+        const [data, urls, businessLayers] = await Promise.all([
             RequestLog.findSummary(query),
             RequestLog.distinctUrls({ tenant: tenant.id }),
+            RequestLog.distinctBusinessLayers({ tenant: tenant.id }),
         ]);
         const statuses = [...new Set(
             data
@@ -134,6 +138,7 @@ export default new class AdminController extends CoreController {
             content: {
                 urls,
                 statuses,
+                businessLayers,
                 data,
             },
         });
@@ -236,10 +241,11 @@ export default new class AdminController extends CoreController {
         if (!this._validateTenantId(tenantId, res)) return;
 
         try {
-            const tenant = await applyTenantPatch(tenantId, req.body, { httpRequest: this.httpRequest });
+            const result = await applyTenantPatch(tenantId, req.body, { httpRequest: this.httpRequest });
             return this.response(res, {
                 status: HttpStatusCodes.SUCCESS,
-                content: tenant,
+                content: result.tenant,
+                meta: result.meta,
             });
         } catch (error) {
             if (error instanceof TenantPatchError) {
@@ -268,8 +274,13 @@ export default new class AdminController extends CoreController {
 
         const updatePayload = { shopify: { billing: incomingBilling } };
         const planKey = incomingBilling.planKey ?? tenant.shopify?.billing?.planKey;
+        // Keep shopify.isEnterprise authoritative with the billing plan (downgrade => false).
+        if (incomingBilling.planKey !== undefined) {
+            updatePayload.shopify.isEnterprise = incomingBilling.planKey === SystemCodes.BILLING_PLANS.ENTERPRISE.KEY;
+        }
         if (planKey && !isFindInStorePlanAllowed(planKey)) {
             ObjectHelper.deepMerge(updatePayload, findInStoreScheduleDisableUpdate());
+            ObjectHelper.deepMerge(updatePayload, marketSyncScheduleDisableUpdate());
         }
 
         const updated = await Tenant.updateOne(
@@ -313,10 +324,153 @@ export default new class AdminController extends CoreController {
 
     deleteAllTenants = async (_, res) => {
         await Tenant.deleteMany({});
-        
+
         return this.response(res, {
             status: HttpStatusCodes.SUCCESS,
             content: { message: "All tenants deleted successfully." }
         });
+    }
+
+    _validateNotificationPayload = (body, { partial = false, existing = null } = {}) => {
+        const TONES = ["info", "warning", "critical", "success"];
+
+        if (!partial || body.title !== undefined) {
+            if (typeof body.title !== "string" || body.title.trim().length === 0) {
+                return "Title is required.";
+            }
+        }
+
+        if (!partial || body.message !== undefined) {
+            if (typeof body.message !== "string" || body.message.trim().length === 0) {
+                return "Message is required.";
+            }
+        }
+
+        if (body.tone !== undefined && !TONES.includes(body.tone)) {
+            return `Tone must be one of: ${TONES.join(", ")}.`;
+        }
+
+        if (body.tenantIds !== undefined) {
+            if (!Array.isArray(body.tenantIds) || body.tenantIds.some((id) => !UuidHelper.isValidUuid(id))) {
+                return "tenantIds must be an array of valid UUIDs.";
+            }
+        }
+
+        // A notification must target someone: either show_to_all or a non-empty tenant list.
+        const showToAll = body.showToAll !== undefined ? body.showToAll === true : existing?.showToAll === true;
+        const tenantIds = body.tenantIds !== undefined ? body.tenantIds : existing?.tenantIds ?? [];
+        if (!showToAll && tenantIds.length === 0) {
+            return "Select at least one tenant or enable showToAll.";
+        }
+
+        return null;
+    }
+
+    getNotifications = async (_, res) => {
+        const items = await Notification.findAll();
+
+        return this.response(res, {
+            status: HttpStatusCodes.SUCCESS,
+            content: { items },
+        });
+    }
+
+    createNotification = async (req, res) => {
+        const validationError = this._validateNotificationPayload(req.body ?? {});
+        if (validationError) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: validationError,
+            });
+        }
+
+        try {
+            const notification = await Notification.create(req.body);
+            return this.response(res, {
+                status: HttpStatusCodes.CREATED,
+                content: notification,
+            });
+        } catch (error) {
+            return this._respondNotificationError(res, error);
+        }
+    }
+
+    updateNotification = async (req, res) => {
+        const notificationId = req.params.notification_id;
+        if (!UuidHelper.isValidUuid(notificationId)) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Invalid UUID format.",
+            });
+        }
+
+        const existing = await Notification.findById(notificationId);
+        if (!existing) {
+            return this.response(res, {
+                status: HttpStatusCodes.NOT_FOUND,
+                info: "Notification not found.",
+            });
+        }
+
+        const validationError = this._validateNotificationPayload(req.body ?? {}, { partial: true, existing });
+        if (validationError) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: validationError,
+            });
+        }
+
+        try {
+            const notification = await Notification.update(notificationId, req.body);
+            return this.response(res, {
+                status: HttpStatusCodes.SUCCESS,
+                content: notification,
+            });
+        } catch (error) {
+            return this._respondNotificationError(res, error);
+        }
+    }
+
+    deleteNotification = async (req, res) => {
+        const notificationId = req.params.notification_id;
+        if (!UuidHelper.isValidUuid(notificationId)) {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Invalid UUID format.",
+            });
+        }
+
+        const existing = await Notification.findById(notificationId);
+        if (!existing) {
+            return this.response(res, {
+                status: HttpStatusCodes.NOT_FOUND,
+                info: "Notification not found.",
+            });
+        }
+
+        await Notification.deleteOne(notificationId);
+
+        return this.response(res, {
+            status: HttpStatusCodes.SUCCESS,
+            content: { deleted: true },
+        });
+    }
+
+    _respondNotificationError = (res, error) => {
+        // Partial unique index guards the single-active rule; a concurrent
+        // activation loses with P2002 and should read as a conflict.
+        if (error?.code === "P2002") {
+            return this.response(res, {
+                status: HttpStatusCodes.CONFLICT,
+                info: "Another notification was activated at the same time. Refresh and try again.",
+            });
+        }
+        if (error?.code === "P2003") {
+            return this.response(res, {
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "One or more tenantIds do not exist.",
+            });
+        }
+        throw error;
     }
 }

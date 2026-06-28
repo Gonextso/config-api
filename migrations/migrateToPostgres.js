@@ -222,6 +222,16 @@ async function migrateTenants() {
             isActive: tenant.nebim.isActive ?? true,
             productCategoryKeysFrom: tenant.nebim.product?.categoryKeysFrom || [],
             productBarcodeTypeCode: (tenant.nebim.product?.barcodeTypeCode || 'EAN13').trim(),
+            productPriceSellCode: tenant.nebim.product?.priceSellCode?.trim() || null,
+            productPriceCompareCode: tenant.nebim.product?.priceCompareCode?.trim() || null,
+            productResponsibilityAreaCode: tenant.nebim.product?.responsibilityAreaCode?.trim() || null,
+            productIsColorBased: tenant.nebim.product?.isColorBased ?? false,
+            productUseInternetOnVariant: tenant.nebim.product?.useInternetOnVariant ?? false,
+            productUsedSeparatorOnColorAndItem: tenant.nebim.product?.usedSeparatorOnColorAndItem?.trim() || null,
+            productUsedSeparatorOnColorAndItemDescriptions:
+              tenant.nebim.product?.usedSeparatorOnColorAndItemDescriptions?.length === 1
+                ? tenant.nebim.product.usedSeparatorOnColorAndItemDescriptions
+                : null,
             customerPhoneType: tenant.nebim.customer?.phoneType || '7',
             customerAddressType: tenant.nebim.customer?.addressType || '1',
             customerConfirmationFormTypeCode: tenant.nebim.customer?.confirmationFormTypeCode,

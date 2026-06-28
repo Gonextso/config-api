@@ -1,0 +1,1 @@
+-- No-op: this migration predates config-api managing the cron schema; cron-builder owns it directly.

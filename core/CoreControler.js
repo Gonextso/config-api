@@ -8,7 +8,7 @@ export default class CoreController extends CoreClass {
         this.httpRequest = new HttpRequestHelper();
     }
 
-    response = async (res, { content, headers, info, status, error } = { status: HttpStatusCodes.SUCCESS, content: {} }) => {
+    response = async (res, { content, headers, info, status, error, meta } = { status: HttpStatusCodes.SUCCESS, content: {} }) => {
         if (!res || !status) throw new Error(`Check required parameters: res:${res}, status:${status}`);
 
         const baseResponse = {
@@ -24,7 +24,8 @@ export default class CoreController extends CoreClass {
             JSON.stringify(!error ?
                 {
                     ...baseResponse,
-                    content: content && typeof content === 'object' ? content : (content ?? {})
+                    content: content && typeof content === 'object' ? content : (content ?? {}),
+                    ...(meta ? { meta } : {}),
                 } :
                 {
                     ...baseResponse,

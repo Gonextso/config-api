@@ -40,8 +40,16 @@ export default new class AuthMiddleware extends CoreController {
             })
         }
 
+        if (!tenant.shopify?.apiKey) {
+            return this.response(res, {
+                status: HttpStatusCodes.UNAUTHORIZED,
+                info: "Shopify API key is not configured for this tenant."
+            });
+        }
+
         req.tenant = tenant;
         req.tenant.shopify.decryptedApiKey = CryptoHelper.decrypt(tenant.shopify.apiKey);
+        req.tenant.shopify.decyrptedApiKey = req.tenant.shopify.decryptedApiKey;
 
         return next();
     }
@@ -83,15 +91,26 @@ export default new class AuthMiddleware extends CoreController {
         const access_token = await api.getAccessToken(tenant.name, idToken)
             .catch(error => (callError =  error));
 
-        if (callError && isAxiosError(callError)) return this.response(res, {
-            status: { code: callError.status, message: callError.message },
-        })
-        else this.throws(error.message)
+        if (callError) {
+            if (isAxiosError(callError)) return this.response(res, {
+                status: { code: callError.status, message: callError.message },
+            });
+
+            this.throws(callError.message);
+        }
+
+        if (!tenant.shopify?.apiKey) {
+            return this.response(res, {
+                status: HttpStatusCodes.UNAUTHORIZED,
+                info: "Shopify API key is not configured for this tenant."
+            });
+        }
 
         req.tenant = tenant;
         req.shopify = {};
         req.shopify.access_token = access_token;
-        req.tenant.shopify.decyrptedApiKey = CryptoHelper.decrypt(tenant.shopify.apiKey);
+        req.tenant.shopify.decryptedApiKey = CryptoHelper.decrypt(tenant.shopify.apiKey);
+        req.tenant.shopify.decyrptedApiKey = req.tenant.shopify.decryptedApiKey;
 
         next();
     }

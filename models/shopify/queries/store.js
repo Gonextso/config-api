@@ -31,4 +31,14 @@ query Publications {
         }
     }
 }`,
+    shopPlan: `
+query ShopPlan {
+    shop {
+        plan {
+            shopifyPlus
+            partnerDevelopment
+            displayName
+        }
+    }
+}`,
 }
