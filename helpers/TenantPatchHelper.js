@@ -52,7 +52,7 @@ export async function applyTenantPatch(tenantId, updateData, { httpRequest }) {
 
     if (updateData?.shopify?.apiKey) delete updateData.shopify.apiKey;
 
-    if ((updateData?.shopify?.schedules) && tenant.shopify.billing.isBlocked) {
+    if ((updateData?.shopify?.schedules) && tenant.shopify.billing?.isBlocked === true) {
         throw new TenantPatchError(
             HttpStatusCodes.BAD_REQUEST,
             "Schedules cannot be patched when there is no active plan on store",

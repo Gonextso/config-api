@@ -123,16 +123,34 @@ export default new class BillingController extends CoreController {
             
             this.logger.info2(`[BillingController] Tenant ${tenant.name} billing activated successfully`);
         } else if (
-            status === "EXPIRED" || 
-            status === "DECLINED" || 
-            status === "PENDING" || 
-            status === "TRIAL_WILL_END" || 
-            status === "TRIAL_ENDED" || 
-            status === "UNPAID" || 
-            status === "PAUSED" || 
+            status === "EXPIRED" ||
+            status === "DECLINED" ||
+            status === "PENDING" ||
+            status === "TRIAL_WILL_END" ||
+            status === "TRIAL_ENDED" ||
+            status === "UNPAID" ||
+            status === "PAUSED" ||
             status === "SUSPENDED") {
             this.logger.info2(`[BillingController] Billing changed for ${tenant.name} with status ${status} (blocking)`);
-            
+
+            // Plan değişiminde eski abonelik EXPIRED/DECLINED gelebilir; güncel subscription ID ile
+            // eşleşmiyorsa bu tenant'ı engelleme — sadece pending alanları temizle.
+            const storedSubId = tenant.shopify?.billing?.subscription?.id;
+            const incomingSubId = admin_graphql_api_id;
+            const ns = normalizeAppSubscriptionGid(storedSubId);
+            const nw = normalizeAppSubscriptionGid(incomingSubId);
+
+            if (ns && nw && ns !== nw) {
+                this.logger.info2(
+                    `[BillingController] Skipping block for ${tenant.name}: expired subscription (${nw}) is not current tenant subscription (${ns})`
+                );
+                await Tenant.updateOne(
+                    { id: tenant.id },
+                    { $unset: { "shopify.billing.pendingNonce": 1, "shopify.billing.pendingPlanKey": 1 } }
+                );
+                return this.response(res, { status: HttpStatusCodes.SUCCESS, info: "Skipped: expired subscription is not current" });
+            }
+
             const updateData = {
                 "shopify.billing.isBlocked": true,
                 "shopify.billing.periodStart": new Date().toISOString(),
