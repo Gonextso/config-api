@@ -164,14 +164,21 @@ export default new class AdminController extends CoreController {
         const tenant = await this._findTenantOrRespond(tenantId, res);
         if (!tenant) return;
 
-        const items = await OrderSyncBatch.find({ tenant: tenant.id });
+        const { page, limit, sortOrder, traceId, process: processType, errorLogExists } = req.query;
+
+        const result = await OrderSyncBatch.findFiltered({
+            tenantId: tenant.id,
+            page: Number(page) || 1,
+            limit: Number(limit) || 20,
+            sortOrder: sortOrder === 'ASC' ? 'ASC' : 'DESC',
+            traceId: traceId || undefined,
+            process: processType || undefined,
+            errorLogExists: errorLogExists === 'true' ? true : errorLogExists === 'false' ? false : undefined,
+        });
 
         return this.response(res, {
             status: HttpStatusCodes.SUCCESS,
-            content: {
-                items,
-                total: items.length,
-            },
+            content: result,
         });
     }
 

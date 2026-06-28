@@ -13,6 +13,7 @@ class OrderSyncBatchModel {
         tenant: true,
         failedOrders: true,
         successOrders: true,
+        logs: { orderBy: { createdAt: 'asc' } },
       },
       orderBy: {
         createdAt: 'desc',
@@ -33,6 +34,7 @@ class OrderSyncBatchModel {
         tenant: true,
         failedOrders: true,
         successOrders: true,
+        logs: { orderBy: { createdAt: 'asc' } },
       },
     });
 
@@ -102,6 +104,34 @@ class OrderSyncBatchModel {
       }
       return formatted;
     });
+  }
+
+  /**
+   * Find sync batches with filters and pagination (admin job list)
+   */
+  async findFiltered({ tenantId, process, traceId, sortOrder = 'DESC', errorLogExists, page = 1, limit = 20 }) {
+    const where = { tenantId };
+    if (process) where.process = process;
+    if (traceId) where.traceId = { contains: traceId, mode: 'insensitive' };
+    if (errorLogExists !== undefined) where.isErrorLogExistsForBatch = errorLogExists;
+
+    const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
+    const order = sortOrder === 'ASC' ? 'asc' : 'desc';
+
+    const [batches, total] = await Promise.all([
+      prisma.syncBatch.findMany({
+        where,
+        orderBy: { createdAt: order },
+        skip,
+        take: Number(limit),
+      }),
+      prisma.syncBatch.count({ where }),
+    ]);
+
+    return {
+      total,
+      rows: batches.map(b => this._transformToMongoFormat(b)),
+    };
   }
 
   /**
@@ -199,6 +229,14 @@ class OrderSyncBatchModel {
       } : batch.tenantId,
       traceId: batch.traceId,
       createdAt: batch.createdAt,
+      logs: (batch.logs ?? []).map(l => ({
+        id: l.id,
+        level: l.level,
+        step: l.step,
+        message: l.message,
+        data: l.data,
+        createdAt: l.createdAt,
+      })),
     };
   }
 }
