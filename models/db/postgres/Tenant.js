@@ -3,6 +3,7 @@ import moment from 'moment';
 import SystemCodes from '../../../enums/SystemCodes.js';
 import ObjectHelper from '../../../helpers/ObjectHelper.js';
 import LogHelper from '../../../helpers/LogHelper.js';
+import { ensureSetupRecord, transformSetupToApi } from '../../../helpers/SetupHelper.js';
 
 class TenantModel {
   constructor() {
@@ -23,6 +24,7 @@ class TenantModel {
         nebimAuth: true,
         pricing: true,
         schedules: true,
+        setup: true,
       },
     });
 
@@ -49,6 +51,7 @@ class TenantModel {
         nebimAuth: true,
         pricing: true,
         schedules: true,
+        setup: true,
       },
     });
 
@@ -74,6 +77,7 @@ class TenantModel {
         nebimAuth: true,
         pricing: true,
         schedules: true,
+        setup: true,
       },
     });
 
@@ -107,7 +111,10 @@ class TenantModel {
           isInventoryTracking: true,
           isColorOptionFirst: true,
           isEnterprise: false,
+          isShopifyPlus: false,
           isActive: true,
+          currencyCode: null,
+          countryCode: null,
           skuFieldsNebim: [
             SystemCodes.NEBIM_SKU_FIELDS.ITEM_CODE,
             SystemCodes.NEBIM_SKU_FIELDS.COLOR_CODE,
@@ -133,6 +140,7 @@ class TenantModel {
           customerAddressType: '1',
           customerConsentSource: 'HS_WEB',
           orderPosTerminalId: 1,
+          orderIsMicroExport: false,
           procProductDetails: 'sp_GO_GetProductDetails',
           procProductInventory: 'sp_GO_GetProductInventory',
           procProductPrice: 'sp_GO_GetProductPrice',
@@ -141,6 +149,7 @@ class TenantModel {
           procCustomerCheck: 'sp_GO_GetCustomer',
           procOrderStatus: 'sp_GO_OrderStatus',
           procDefaultsAddressCodes: 'sp_GO_GetAddressList',
+          procInputValidation: 'sp_GO_InputValidator',
         },
       };
     }
@@ -185,6 +194,8 @@ class TenantModel {
           nebimProductFindInStoreInterval: '*/30 * * * *',
           nebimProductFindInStoreStartDate: moment().subtract(30, 'minutes').toDate(),
           nebimProductFindInStoreIsActive: false,
+          nebimProductMarketSyncInterval: '0 0 * * *',
+          nebimProductMarketSyncIsActive: false,
           redentionLogsInterval: '0 0 * * *',
           redentionLogsStartDate: moment().subtract(1, 'days').toDate(),
           redentionLogsIsActive: true,
@@ -199,7 +210,10 @@ class TenantModel {
     if (normalized.nebimAuth) {
       createData.nebimAuth = { create: normalized.nebimAuth };
     }
-    
+
+    // Setup record must exist from day one so the setup wizard starts from scratch
+    createData.setup = { create: {} };
+
     const tenant = await prisma.tenantInfo.create({
       data: createData,
       include: {
@@ -209,6 +223,7 @@ class TenantModel {
         nebimAuth: true,
         pricing: true,
         schedules: true,
+        setup: true,
       },
     });
 
@@ -230,7 +245,10 @@ class TenantModel {
             isInventoryTracking: true,
             isColorOptionFirst: true,
             isEnterprise: false,
+            isShopifyPlus: false,
             isActive: true,
+            currencyCode: null,
+            countryCode: null,
             skuFieldsNebim: [
               SystemCodes.NEBIM_SKU_FIELDS.ITEM_CODE,
               SystemCodes.NEBIM_SKU_FIELDS.COLOR_CODE,
@@ -257,6 +275,7 @@ class TenantModel {
             customerAddressType: '1',
             customerConsentSource: 'HS_WEB',
             orderPosTerminalId: 1,
+            orderIsMicroExport: false,
             procProductDetails: 'sp_GO_GetProductDetails',
             procProductInventory: 'sp_GO_GetProductInventory',
             procProductPrice: 'sp_GO_GetProductPrice',
@@ -265,7 +284,18 @@ class TenantModel {
             procCustomerCheck: 'sp_GO_GetCustomer',
             procOrderStatus: 'sp_GO_OrderStatus',
             procDefaultsAddressCodes: 'sp_GO_GetAddressList',
+            procInputValidation: 'sp_GO_InputValidator',
           },
+          update: {},
+        },
+      };
+    }
+
+    // Create setup if not exists
+    if (!tenant.setup) {
+      updates.setup = {
+        upsert: {
+          create: {},
           update: {},
         },
       };
@@ -311,6 +341,8 @@ class TenantModel {
             nebimProductFindInStoreInterval: '*/30 * * * *',
             nebimProductFindInStoreStartDate: moment().subtract(30, 'minutes').toDate(),
             nebimProductFindInStoreIsActive: false,
+            nebimProductMarketSyncInterval: '0 0 * * *',
+            nebimProductMarketSyncIsActive: false,
             redentionLogsInterval: '0 0 * * *',
             redentionLogsStartDate: moment().subtract(1, 'days').toDate(),
             redentionLogsIsActive: true,
@@ -371,30 +403,28 @@ class TenantModel {
     }
     
     const normalized = this._normalizeUpdate(update, existingTenant);
-    
-    // Preserve shopId if it's not in the update and exists in the current tenant
-    if (normalized.shopify && existingTenant?.shopify?.shopId && !update.shopify?.shopId && !update['shopify.shopId']) {
-      normalized.shopify.shopId = existingTenant.shopify.shopId;
-    }
-    
-    // Handle nested updates
+
+    // Handle nested updates.
+    // `update` branches only write the fields present in the request (partial),
+    // `create` branches fall back to full objects with defaults so that a
+    // missing related record can still be created with valid values.
     const updateData = {
       ...normalized.base,
     };
 
-    if (normalized.shopify) {
+    if (normalized.shopify && Object.keys(normalized.shopify).length > 0) {
       updateData.shopify = {
         upsert: {
-          create: normalized.shopify,
+          create: this._normalizeFromMongoFormat({ shopify: update.shopify ?? {} }).shopify,
           update: normalized.shopify,
         },
       };
     }
 
-    if (normalized.nebim) {
+    if (normalized.nebim && Object.keys(normalized.nebim).length > 0) {
       updateData.nebim = {
         upsert: {
-          create: normalized.nebim,
+          create: this._normalizeFromMongoFormat({ nebim: update.nebim ?? {} }).nebim,
           update: normalized.nebim,
         },
       };
@@ -418,10 +448,10 @@ class TenantModel {
       };
     }
 
-    if (normalized.pricing) {
+    if (normalized.pricing && Object.keys(normalized.pricing).length > 0) {
       updateData.pricing = {
         upsert: {
-          create: normalized.pricing,
+          create: this._normalizeFromMongoFormat({ shopify: { billing: update.shopify?.billing ?? {} } }).pricing,
           update: normalized.pricing,
         },
       };
@@ -446,6 +476,7 @@ class TenantModel {
         nebimAuth: true,
         pricing: true,
         schedules: true,
+        setup: true,
       },
     });
 
@@ -545,7 +576,10 @@ class TenantModel {
         isInventoryTracking: data.shopify.isInventoryTracking ?? true,
         isColorOptionFirst: data.shopify.isColorOptionFirst ?? true,
         isEnterprise: data.shopify.isEnterprise ?? false,
+        isShopifyPlus: data.shopify.isShopifyPlus ?? false,
         isActive: data.shopify.isActive ?? true,
+        currencyCode: data.shopify.currencyCode ?? null,
+        countryCode: data.shopify.countryCode ?? null,
         skuFieldsNebim: data.shopify.skuFields?.nebim?.fields && data.shopify.skuFields.nebim.fields.length > 0
           ? data.shopify.skuFields.nebim.fields
           : [
@@ -600,6 +634,10 @@ class TenantModel {
           nebimProductFindInStoreInterval: data.shopify.schedules.nebim?.product?.find_in_store?.interval || '*/30 * * * *',
           nebimProductFindInStoreStartDate: data.shopify.schedules.nebim?.product?.find_in_store?.startDate ? new Date(data.shopify.schedules.nebim.product.find_in_store.startDate) : moment().subtract(30, 'minutes').toDate(),
           nebimProductFindInStoreIsActive: data.shopify.schedules.nebim?.product?.find_in_store?.isActive ?? false,
+          nebimProductMarketSyncInterval: data.shopify.schedules.nebim?.product?.market_sync?.interval || '0 0 * * *',
+          nebimProductMarketSyncIsActive: data.shopify.schedules.nebim?.product?.market_sync?.isActive ?? false,
+          nebimProductMarketPriceStartDate: data.shopify.schedules.nebim?.product?.market_sync?.priceStartDate ? new Date(data.shopify.schedules.nebim.product.market_sync.priceStartDate) : null,
+          nebimProductMarketContentStartDate: data.shopify.schedules.nebim?.product?.market_sync?.contentStartDate ? new Date(data.shopify.schedules.nebim.product.market_sync.contentStartDate) : null,
           redentionLogsInterval: data.shopify.schedules.redention?.logs?.interval || '0 0 * * *',
           redentionLogsStartDate: data.shopify.schedules.redention?.logs?.startDate ? new Date(data.shopify.schedules.redention.logs.startDate) : moment().subtract(1, 'days').toDate(),
           redentionLogsIsActive: data.shopify.schedules.redention?.logs?.isActive ?? true,
@@ -619,13 +657,26 @@ class TenantModel {
         isCargoService: data.nebim.order?.isCargoService ?? data.nebim.isCargoService ?? false,
         productCategoryKeysFrom: data.nebim.product?.categoryKeysFrom || [],
         productBarcodeTypeCode: (data.nebim.product?.barcodeTypeCode || 'EAN13').trim(),
+        productPriceSellCode: data.nebim.product?.priceSellCode?.trim() || null,
+        productPriceCompareCode: data.nebim.product?.priceCompareCode?.trim() || null,
+        productResponsibilityAreaCode: data.nebim.product?.responsibilityAreaCode?.trim() || null,
+        productIsColorBased: data.nebim.product?.isColorBased ?? false,
+        productUseInternetOnVariant: data.nebim.product?.useInternetOnVariant ?? false,
+        productUsedSeparatorOnColorAndItem: data.nebim.product?.usedSeparatorOnColorAndItem?.trim() || null,
+        productUsedSeparatorOnColorAndItemDescriptions:
+          data.nebim.product?.usedSeparatorOnColorAndItemDescriptions?.length === 1
+            ? data.nebim.product.usedSeparatorOnColorAndItemDescriptions
+            : null,
         customerPhoneType: data.nebim.customer?.phoneType || '7',
         customerAddressType: data.nebim.customer?.addressType || '1',
         customerConfirmationFormTypeCode: data.nebim.customer?.confirmationFormTypeCode,
         customerConfirmationFormStatusCode: data.nebim.customer?.confirmationFormStatusCode,
         customerConsentSource: data.nebim.customer?.consentSource || 'HS_WEB',
         customerInactivationReasonCode: data.nebim.customer?.inactivationReasonCode,
-        orderDeliveryCompany: data.nebim.order?.deliveryCompanyCode ?? data.nebim.order?.deliveryCompany,
+        orderDeliveryCompany:
+          data.nebim.order?.deliveryCompany
+          ?? data.nebim.order?.deliveryCompanyCode
+          ?? null,
         orderPosTerminalId: data.nebim.order?.posTerminalId ?? 1,
         orderCreditCardType: data.nebim.order?.creditCardType,
         orderOffice: data.nebim.order?.office,
@@ -633,6 +684,9 @@ class TenantModel {
         orderCompany: data.nebim.order?.company ? String(data.nebim.order.company) : null,
         orderWarehouse: data.nebim.order?.warehouse,
         orderCancelReason: data.nebim.order?.cancelReason,
+        orderIsMicroExport: data.nebim.order?.isMicroExport ?? false,
+        orderIncotermCode1: data.nebim.order?.incotermCode1?.trim() || null,
+        orderIncotermCode2: data.nebim.order?.incotermCode2?.trim() || null,
         procProductDetails: data.nebim.procNames?.product?.details || 'sp_GO_GetProductDetails',
         procProductInventory: data.nebim.procNames?.product?.inventory || 'sp_GO_GetProductInventory',
         procProductPrice: data.nebim.procNames?.product?.price || 'sp_GO_GetProductPrice',
@@ -641,6 +695,7 @@ class TenantModel {
         procCustomerCheck: data.nebim.procNames?.customer?.check || 'sp_GO_GetCustomer',
         procOrderStatus: data.nebim.procNames?.order?.status || 'sp_GO_OrderStatus',
         procDefaultsAddressCodes: data.nebim.procNames?.defaults?.addressCodes || 'sp_GO_GetAddressList',
+        procInputValidation: data.nebim.procNames?.inputValidation || 'sp_GO_InputValidator',
       };
 
       if (data.nebim.password) {
@@ -720,22 +775,6 @@ class TenantModel {
       }
     }
 
-    // Preserve existing used values in billing limits if not in update
-    if (nestedUpdate.shopify?.billing?.limits && existingTenant?.shopify?.billing?.limits) {
-      // Preserve product_details.used if not in update
-      if (nestedUpdate.shopify.billing.limits.product_details && 
-          nestedUpdate.shopify.billing.limits.product_details.used === undefined) {
-        nestedUpdate.shopify.billing.limits.product_details.used = 
-          existingTenant.shopify.billing.limits.product_details?.used ?? 0;
-      }
-      // Preserve order.used if not in update
-      if (nestedUpdate.shopify.billing.limits.order && 
-          nestedUpdate.shopify.billing.limits.order.used === undefined) {
-        nestedUpdate.shopify.billing.limits.order.used = 
-          existingTenant.shopify.billing.limits.order?.used ?? 0;
-      }
-    }
-
     // Merge nested updates with deep merge to preserve nested objects
     if (nestedUpdate.shopify) {
       if (!update.shopify) update.shopify = {};
@@ -746,67 +785,42 @@ class TenantModel {
       ObjectHelper.deepMerge(update.nebim, nestedUpdate.nebim);
     }
 
-    // Preserve existing used values in billing limits for object-style updates (before normalization)
-    if (update.shopify?.billing?.limits && existingTenant?.shopify?.billing?.limits) {
-      // Preserve product_details.used if not in update
-      if (update.shopify.billing.limits.product_details && 
-          update.shopify.billing.limits.product_details.used === undefined) {
-        update.shopify.billing.limits.product_details.used = 
-          existingTenant.shopify.billing.limits.product_details?.used ?? 0;
-      }
-      // Preserve order.used if not in update
-      if (update.shopify.billing.limits.order && 
-          update.shopify.billing.limits.order.used === undefined) {
-        update.shopify.billing.limits.order.used = 
-          existingTenant.shopify.billing.limits.order?.used ?? 0;
-      }
-    }
-
     if (update.name !== undefined) normalized.base.name = update.name;
     if (update.isActive !== undefined) normalized.base.isActive = update.isActive;
     if (update.isTestStore !== undefined) normalized.base.isTestStore = update.isTestStore;
 
+    // Partial normalization: only the fields present in the update are written,
+    // so a narrow update (e.g. apiKey rotation or a billing webhook) can never
+    // reset unrelated columns back to their defaults.
     if (update.shopify) {
-      normalized.shopify = this._normalizeFromMongoFormat({ shopify: update.shopify }).shopify;
+      normalized.shopify = this._normalizeShopifyPartial(update.shopify);
     }
 
     if (update.nebim) {
-      const nebimNormalized = this._normalizeFromMongoFormat({ nebim: update.nebim });
-      normalized.nebim = nebimNormalized.nebim;
-      // If password was in nebim, it's already normalized to nebimAuth
-      if (nebimNormalized.nebimAuth) {
-        normalized.nebimAuth = nebimNormalized.nebimAuth;
-      }
+      normalized.nebim = this._normalizeNebimPartial(update.nebim);
     }
 
     if (update.shopify?.apiKey) {
       normalized.shopifyAuth = this._normalizeFromMongoFormat({ shopify: { apiKey: update.shopify.apiKey } }).shopifyAuth;
     }
 
-    // Check if password exists separately (in case it wasn't in update.nebim)
-    if (update.nebim?.password && !normalized.nebimAuth) {
+    if (update.nebim?.password) {
       normalized.nebimAuth = this._normalizeFromMongoFormat({ nebim: { password: update.nebim.password } }).nebimAuth;
     }
 
-    // Check billing after merge - use nestedUpdate if update.shopify.billing doesn't exist
     if (update.shopify?.billing) {
-      normalized.pricing = this._normalizeFromMongoFormat({ shopify: { billing: update.shopify.billing } }).pricing;
-    } else if (nestedUpdate.shopify?.billing) {
-      // Fallback: use nestedUpdate if merge didn't work
-      normalized.pricing = this._normalizeFromMongoFormat({ shopify: { billing: nestedUpdate.shopify.billing } }).pricing;
+      normalized.pricing = this._normalizePricingPartial(update.shopify.billing);
     }
-    
+
     // Merge $unset nulls into pricing
-    if (normalized.pricing && Object.keys(unsetValues).length > 0) {
-      for (const [key, value] of Object.entries(unsetValues)) {
-        if (value === 1 || value === true) {
-          if (key.startsWith('shopify.billing.')) {
-            const field = key.replace('shopify.billing.', '');
-            // Field is already in camelCase (pendingNonce, pendingPlanKey)
-            // Use it directly for Prisma client
-            normalized.pricing[field] = null;
-          }
-        }
+    const billingUnsetKeys = Object.entries(unsetValues)
+      .filter(([key, value]) => (value === 1 || value === true) && key.startsWith('shopify.billing.'))
+      .map(([key]) => key.replace('shopify.billing.', ''));
+    if (billingUnsetKeys.length > 0) {
+      if (!normalized.pricing) normalized.pricing = {};
+      for (const field of billingUnsetKeys) {
+        // Field is already in camelCase (pendingNonce, pendingPlanKey)
+        normalized.pricing[field] = null;
       }
     }
 
@@ -815,6 +829,140 @@ class TenantModel {
     }
 
     return normalized;
+  }
+
+  /**
+   * Normalize a partial shopify update: maps only the provided fields to their
+   * Prisma column names. apiKey/billing/schedules are handled separately.
+   */
+  _normalizeShopifyPartial(shopify) {
+    const out = {};
+
+    if (shopify.name !== undefined) out.name = shopify.name;
+    if (shopify.domain !== undefined) out.domain = shopify.domain;
+    if (shopify.shopId !== undefined) out.shopId = shopify.shopId ? String(shopify.shopId) : null;
+    if (shopify.customerEmail !== undefined) out.customerEmail = shopify.customerEmail;
+    if (shopify.isInventoryTracking !== undefined) out.isInventoryTracking = shopify.isInventoryTracking;
+    if (shopify.isColorOptionFirst !== undefined) out.isColorOptionFirst = shopify.isColorOptionFirst;
+    if (shopify.isEnterprise !== undefined) out.isEnterprise = shopify.isEnterprise;
+    if (shopify.isShopifyPlus !== undefined) out.isShopifyPlus = shopify.isShopifyPlus;
+    if (shopify.isActive !== undefined) out.isActive = shopify.isActive;
+    if (shopify.currencyCode !== undefined) out.currencyCode = shopify.currencyCode;
+    if (shopify.countryCode !== undefined) out.countryCode = shopify.countryCode;
+
+    if (shopify.skuFields?.nebim?.fields !== undefined) {
+      out.skuFieldsNebim = shopify.skuFields.nebim.fields.length > 0
+        ? shopify.skuFields.nebim.fields
+        : [
+            SystemCodes.NEBIM_SKU_FIELDS.ITEM_CODE,
+            SystemCodes.NEBIM_SKU_FIELDS.COLOR_CODE,
+            SystemCodes.NEBIM_SKU_FIELDS.ITEM_DIM1_CODE
+          ];
+    }
+    if (shopify.skuFields?.nebim?.separator !== undefined) {
+      out.skuFieldsSeparator = shopify.skuFields.nebim.separator || SystemCodes.SEPARATORS.DASH;
+    }
+
+    return out;
+  }
+
+  /**
+   * Normalize a partial nebim update: maps only the provided fields to their
+   * Prisma column names. password is handled separately (nebimAuth).
+   */
+  _normalizeNebimPartial(nebim) {
+    const out = {};
+
+    if (nebim.host !== undefined) out.host = nebim.host;
+    if (nebim.user !== undefined) out.user = nebim.user;
+    if (nebim.userGroup !== undefined) out.userGroup = nebim.userGroup;
+    if (nebim.salesUrl !== undefined) out.salesUrl = nebim.salesUrl;
+    if (nebim.isActive !== undefined) out.isActive = nebim.isActive;
+    if (nebim.blockProductGenerationWhenOff !== undefined) out.blockProductGenerationWhenOff = nebim.blockProductGenerationWhenOff;
+
+    const order = nebim.order ?? {};
+    if (order.cargoItemCode !== undefined || nebim.cargoItemCode !== undefined) {
+      out.cargoItemCode = order.cargoItemCode ?? nebim.cargoItemCode;
+    }
+    if (order.isCargoService !== undefined || nebim.isCargoService !== undefined) {
+      out.isCargoService = order.isCargoService ?? nebim.isCargoService ?? false;
+    }
+    if (order.deliveryCompany !== undefined || order.deliveryCompanyCode !== undefined) {
+      out.orderDeliveryCompany = order.deliveryCompany ?? order.deliveryCompanyCode ?? null;
+    }
+    if (order.posTerminalId !== undefined) out.orderPosTerminalId = order.posTerminalId ?? 1;
+    if (order.creditCardType !== undefined) out.orderCreditCardType = order.creditCardType;
+    if (order.office !== undefined) out.orderOffice = order.office;
+    if (order.store !== undefined) out.orderStore = order.store;
+    if (order.company !== undefined) out.orderCompany = order.company ? String(order.company) : null;
+    if (order.warehouse !== undefined) out.orderWarehouse = order.warehouse;
+    if (order.cancelReason !== undefined) out.orderCancelReason = order.cancelReason;
+    if (order.isMicroExport !== undefined) out.orderIsMicroExport = order.isMicroExport ?? false;
+    if (order.incotermCode1 !== undefined) out.orderIncotermCode1 = order.incotermCode1?.trim() || null;
+    if (order.incotermCode2 !== undefined) out.orderIncotermCode2 = order.incotermCode2?.trim() || null;
+
+    const product = nebim.product ?? {};
+    if (product.categoryKeysFrom !== undefined) out.productCategoryKeysFrom = product.categoryKeysFrom || [];
+    if (product.barcodeTypeCode !== undefined) out.productBarcodeTypeCode = (product.barcodeTypeCode || 'EAN13').trim();
+    if (product.priceSellCode !== undefined) out.productPriceSellCode = product.priceSellCode?.trim() || null;
+    if (product.priceCompareCode !== undefined) out.productPriceCompareCode = product.priceCompareCode?.trim() || null;
+    if (product.responsibilityAreaCode !== undefined) out.productResponsibilityAreaCode = product.responsibilityAreaCode?.trim() || null;
+    if (product.isColorBased !== undefined) out.productIsColorBased = product.isColorBased ?? false;
+    if (product.useInternetOnVariant !== undefined) out.productUseInternetOnVariant = product.useInternetOnVariant ?? false;
+    if (product.usedSeparatorOnColorAndItem !== undefined) {
+      out.productUsedSeparatorOnColorAndItem = product.usedSeparatorOnColorAndItem?.trim() || null;
+    }
+    if (product.usedSeparatorOnColorAndItemDescriptions !== undefined) {
+      out.productUsedSeparatorOnColorAndItemDescriptions =
+        product.usedSeparatorOnColorAndItemDescriptions?.length === 1
+          ? product.usedSeparatorOnColorAndItemDescriptions
+          : null;
+    }
+
+    const customer = nebim.customer ?? {};
+    if (customer.phoneType !== undefined) out.customerPhoneType = customer.phoneType || '7';
+    if (customer.addressType !== undefined) out.customerAddressType = customer.addressType || '1';
+    if (customer.confirmationFormTypeCode !== undefined) out.customerConfirmationFormTypeCode = customer.confirmationFormTypeCode;
+    if (customer.confirmationFormStatusCode !== undefined) out.customerConfirmationFormStatusCode = customer.confirmationFormStatusCode;
+    if (customer.consentSource !== undefined) out.customerConsentSource = customer.consentSource || 'HS_WEB';
+    if (customer.inactivationReasonCode !== undefined) out.customerInactivationReasonCode = customer.inactivationReasonCode;
+
+    const procNames = nebim.procNames ?? {};
+    if (procNames.product?.details !== undefined) out.procProductDetails = procNames.product.details || 'sp_GO_GetProductDetails';
+    if (procNames.product?.inventory !== undefined) out.procProductInventory = procNames.product.inventory || 'sp_GO_GetProductInventory';
+    if (procNames.product?.price !== undefined) out.procProductPrice = procNames.product.price || 'sp_GO_GetProductPrice';
+    if (procNames.product?.findInStore !== undefined) out.procFindStoreInventory = procNames.product.findInStore || 'sp_GO_FindInStore';
+    if (procNames.product?.storeInfo !== undefined) out.procGetStoreInfo = procNames.product.storeInfo || 'sp_GO_GetStoreInfo';
+    if (procNames.customer?.check !== undefined) out.procCustomerCheck = procNames.customer.check || 'sp_GO_GetCustomer';
+    if (procNames.order?.status !== undefined) out.procOrderStatus = procNames.order.status || 'sp_GO_OrderStatus';
+    if (procNames.defaults?.addressCodes !== undefined) out.procDefaultsAddressCodes = procNames.defaults.addressCodes || 'sp_GO_GetAddressList';
+    if (procNames.inputValidation !== undefined) out.procInputValidation = procNames.inputValidation || 'sp_GO_InputValidator';
+
+    return out;
+  }
+
+  /**
+   * Normalize a partial billing update: maps only the provided fields to their
+   * Prisma pricing column names.
+   */
+  _normalizePricingPartial(billing) {
+    const out = {};
+
+    if (billing.planKey !== undefined) out.planKey = billing.planKey || 'BASIC';
+    if (billing.billingInterval !== undefined) out.billingInterval = billing.billingInterval || 'MONTHLY';
+    if (billing.subscription?.id !== undefined) out.subscriptionId = billing.subscription.id || null;
+    if (billing.subscription?.lineId !== undefined) out.subscriptionLineId = billing.subscription.lineId || null;
+    if (billing.limits?.order?.limit !== undefined) out.orderLimit = billing.limits.order.limit;
+    if (billing.limits?.order?.used !== undefined) out.orderUsed = billing.limits.order.used;
+    if (billing.limits?.product_details?.limit !== undefined) out.productDetailsLimit = billing.limits.product_details.limit;
+    if (billing.limits?.product_details?.used !== undefined) out.productDetailsUsed = billing.limits.product_details.used;
+    if (billing.periodStart !== undefined) out.periodStart = new Date(billing.periodStart);
+    if (billing.periodEnd !== undefined) out.periodEnd = new Date(billing.periodEnd);
+    if (billing.isBlocked !== undefined) out.isBlocked = billing.isBlocked;
+    if (billing.pendingNonce !== undefined) out.pendingNonce = billing.pendingNonce || null;
+    if (billing.pendingPlanKey !== undefined) out.pendingPlanKey = billing.pendingPlanKey || null;
+
+    return out;
   }
 
   /**
@@ -840,7 +988,10 @@ class TenantModel {
         isInventoryTracking: tenant.shopify.isInventoryTracking,
         isColorOptionFirst: tenant.shopify.isColorOptionFirst,
         isEnterprise: tenant.shopify.isEnterprise,
+        isShopifyPlus: tenant.shopify.isShopifyPlus,
         isActive: tenant.shopify.isActive,
+        currencyCode: tenant.shopify.currencyCode ?? null,
+        countryCode: tenant.shopify.countryCode ?? null,
         skuFields: {
           nebim: {
             fields: tenant.shopify.skuFieldsNebim && tenant.shopify.skuFieldsNebim.length > 0
@@ -925,6 +1076,12 @@ class TenantModel {
                 startDate: tenant.schedules.nebimProductFindInStoreStartDate.toISOString(),
                 isActive: tenant.schedules.nebimProductFindInStoreIsActive,
               },
+              market_sync: {
+                interval: tenant.schedules.nebimProductMarketSyncInterval,
+                isActive: tenant.schedules.nebimProductMarketSyncIsActive,
+                priceStartDate: tenant.schedules.nebimProductMarketPriceStartDate ? tenant.schedules.nebimProductMarketPriceStartDate.toISOString() : null,
+                contentStartDate: tenant.schedules.nebimProductMarketContentStartDate ? tenant.schedules.nebimProductMarketContentStartDate.toISOString() : null,
+              },
             },
             order: {
               create_and_cancel: {
@@ -961,6 +1118,13 @@ class TenantModel {
         product: {
           categoryKeysFrom: tenant.nebim.productCategoryKeysFrom,
           barcodeTypeCode: tenant.nebim.productBarcodeTypeCode,
+          priceSellCode: tenant.nebim.productPriceSellCode,
+          priceCompareCode: tenant.nebim.productPriceCompareCode,
+          responsibilityAreaCode: tenant.nebim.productResponsibilityAreaCode,
+          isColorBased: tenant.nebim.productIsColorBased ?? false,
+          useInternetOnVariant: tenant.nebim.productUseInternetOnVariant ?? false,
+          usedSeparatorOnColorAndItem: tenant.nebim.productUsedSeparatorOnColorAndItem,
+          usedSeparatorOnColorAndItemDescriptions: tenant.nebim.productUsedSeparatorOnColorAndItemDescriptions,
         },
         customer: {
           phoneType: tenant.nebim.customerPhoneType,
@@ -982,6 +1146,9 @@ class TenantModel {
           company: tenant.nebim.orderCompany,
           warehouse: tenant.nebim.orderWarehouse,
           cancelReason: tenant.nebim.orderCancelReason,
+          isMicroExport: tenant.nebim.orderIsMicroExport ?? false,
+          incotermCode1: tenant.nebim.orderIncotermCode1 ?? null,
+          incotermCode2: tenant.nebim.orderIncotermCode2 ?? null,
         },
         procNames: {
           product: {
@@ -1000,11 +1167,18 @@ class TenantModel {
           defaults: {
             addressCodes: tenant.nebim.procDefaultsAddressCodes,
           },
+          inputValidation: tenant.nebim.procInputValidation,
         },
       };
 
       // Password is intentionally excluded from response for security reasons
       // Do not include nebim.password in the response
+    }
+
+    if (tenant.setup) {
+      result.setup = transformSetupToApi(tenant.setup);
+    } else {
+      result.setup = transformSetupToApi(null);
     }
 
     return result;

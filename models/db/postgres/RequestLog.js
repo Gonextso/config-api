@@ -35,6 +35,7 @@ class RequestLogModel {
         traceId: true,
         transactionId: true,
         isError: true,
+        businessLayer: true,
         createdAt: true,
       },
       orderBy: {
@@ -57,8 +58,33 @@ class RequestLogModel {
       traceId: log.traceId,
       transactionId: log.transactionId,
       isError: log.isError,
+      businessLayer: log.businessLayer,
       createdAt: log.createdAt,
     }));
+  }
+
+  /**
+   * Distinct business layers by query
+   */
+  async distinctBusinessLayers(query = {}) {
+    const where = this._buildWhereClause(query);
+    const layers = await prisma.requestLog.findMany({
+      where: {
+        ...where,
+        businessLayer: { not: null },
+      },
+      distinct: ['businessLayer'],
+      select: {
+        businessLayer: true,
+      },
+      orderBy: {
+        businessLayer: 'asc',
+      },
+    });
+
+    return layers
+      .map(item => item.businessLayer)
+      .filter(layer => typeof layer === 'string' && layer.length > 0);
   }
 
   /**
@@ -196,6 +222,10 @@ class RequestLogModel {
       where.status = query.status;
     }
 
+    if (query.businessLayer) {
+      where.businessLayer = query.businessLayer;
+    }
+
     return where;
   }
 
@@ -213,6 +243,7 @@ class RequestLogModel {
       responseTime: data.responseTime || null,
       response: data.response || null,
       traceId: data.traceId,
+      businessLayer: data.businessLayer || null,
     };
 
     if (data.tenant) {
@@ -242,6 +273,7 @@ class RequestLogModel {
       responseTime: log.responseTime,
       response: log.response,
       traceId: log.traceId,
+      businessLayer: log.businessLayer,
       createdAt: log.createdAt,
     };
   }

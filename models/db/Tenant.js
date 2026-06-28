@@ -25,16 +25,14 @@ export default mongoose.model('Tenant', new mongoose.Schema({
             },
             limits: {
                 order: {
-                    limit: { type: Number, default: 10 },
+                    limit: { type: Number, default: 5 },
                     used: { type: Number, default: 0 }
                 },
                 product_details: {
-                    limit: { type: Number, default: 1000 },
+                    limit: { type: Number, default: 100 },
                     used: { type: Number, default: 0 }
                 }
             },
-            tokenLimit: { type: Number, default: 5 },
-            tokenUsed: { type: Number, default: 0 },
             periodStart: {
                 type: String,
                 default: function () {
@@ -152,7 +150,14 @@ export default mongoose.model('Tenant', new mongoose.Schema({
         },
         product: {
             categoryKeysFrom: { type: [String], default: [] },
-            barcodeTypeCode: { type: String, default: "EAN13" }
+            barcodeTypeCode: { type: String, default: "EAN13" },
+            priceSellCode: { type: String, default: null },
+            priceCompareCode: { type: String, default: null },
+            responsibilityAreaCode: { type: String, default: null },
+            isColorBased: { type: Boolean, default: false },
+            useInternetOnVariant: { type: Boolean, default: false },
+            usedSeparatorOnColorAndItem: { type: String, default: null },
+            usedSeparatorOnColorAndItemDescriptions: { type: String, default: null },
         },
         customer: {
             phoneType: { type: String, default: "7" },

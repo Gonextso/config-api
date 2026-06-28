@@ -31,6 +31,7 @@ const mockRequestLogModel = {
   find: jest.fn(),
   findSummary: jest.fn(),
   distinctUrls: jest.fn(),
+  distinctBusinessLayers: jest.fn(),
   findOne: jest.fn(),
 };
 
@@ -73,7 +74,7 @@ describe('AdminController', () => {
     name: 'Test Tenant',
     shopify: {
       billing: {
-        planKey: 'PRO',
+        planKey: 'COMMUNITY',
         limits: {
           order: { used: 20 },
           product_details: { used: 55 },
@@ -247,9 +248,10 @@ describe('AdminController', () => {
 
     it('should return paged logs for tenant', async () => {
       mockReq.params = { tenant_id: tenantId };
-      mockReq.query = { traceId: 'trace-1', body: 'tenant', response: 'ok' };
-      mockRequestLogModel.findSummary.mockResolvedValue([{ id: 'log-1' }]);
+      mockReq.query = { traceId: 'trace-1', body: 'tenant', response: 'ok', businessLayer: 'nebim.ProductBusiness' };
+      mockRequestLogModel.findSummary.mockResolvedValue([{ id: 'log-1', businessLayer: 'nebim.ProductBusiness' }]);
       mockRequestLogModel.distinctUrls.mockResolvedValue(['/orders/sync']);
+      mockRequestLogModel.distinctBusinessLayers.mockResolvedValue(['nebim.ProductBusiness', 'shopify.OrderBusiness']);
       await AdminController.getTenantLogs(mockReq, mockRes);
       expect(mockRequestLogModel.findSummary).toHaveBeenCalledWith({
         tenant: tenantId,
@@ -259,13 +261,16 @@ describe('AdminController', () => {
         traceId: 'trace-1',
         body: 'tenant',
         response: 'ok',
+        businessLayer: 'nebim.ProductBusiness',
       });
+      expect(mockRequestLogModel.distinctBusinessLayers).toHaveBeenCalledWith({ tenant: tenantId });
       expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
         status: HttpStatusCodes.SUCCESS,
         content: {
           urls: ['/orders/sync'],
           statuses: [],
-          data: [{ id: 'log-1' }],
+          businessLayers: ['nebim.ProductBusiness', 'shopify.OrderBusiness'],
+          data: [{ id: 'log-1', businessLayer: 'nebim.ProductBusiness' }],
         },
       });
     });

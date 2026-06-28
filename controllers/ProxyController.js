@@ -19,7 +19,12 @@ export default new class ProxyController extends CoreController {
                 'shopify/nebim/customer/consent/gsm',
                 'shopify/nebim/customer/consent/email',
                 'cache/get',
-                'cache/delete'
+                'cache/delete',
+                'nebim/check',
+                'nebim/input-validation',
+                'nebim/customer/setup-test',
+                'nebim/product/setup-test',
+                'nebim/order/setup-test',
             ];
 
             if (typeof path === 'string' && !ALLOWED_PATHS.some(allowedPath => path.toLocaleLowerCase() === allowedPath)) {

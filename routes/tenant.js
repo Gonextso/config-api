@@ -6,6 +6,8 @@ const router = express.Router();
 router.get("/sync_status", TenantController.getSyncStatus);
 router.get("/request_logs", TenantController.getRequestLogs);
 router.get("/request_log_urls", TenantController.getRequestLogUrls);
+router.get("/request_log_business_layers", TenantController.getRequestLogBusinessLayers);
+router.get("/notification", TenantController.getActiveNotification);
 router.get("/", TenantController.getTenant);
 router.patch("/", TenantController.patchTenant);
 router.delete("/", TenantController.deleteTenant);

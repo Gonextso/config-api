@@ -74,70 +74,75 @@ export default new class ShopifyAuthController extends CoreController {
 
                 const domain = shop.domain ?? `${newTenant.name}.myshopify.com`;
 
-                // Önce apiKey hash ile kontrol et
-                let tenant = await Tenant.findOne({
-                    'shopify.apiKey.hash': apiKey
-                });
+                // Install-only Shopify Plus detection. Sets the initial value of isShopifyPlus.
+                // After install this flag is admin-editable and never auto-overwritten.
+                let isShopifyPlus = false;
+                try {
+                    const plan = await shopifyAccessService.getShopPlan(newTenant.name, accessToken);
+                    isShopifyPlus = plan?.shopifyPlus === true;
+                    logger.info2(`[initializeTenant] Shopify plan detected: ${plan?.displayName ?? "unknown"} (shopifyPlus=${isShopifyPlus})`);
+                } catch (error) {
+                    logger.warn(`[initializeTenant] Could not determine Shopify Plus status: ${error.message}`);
+                }
 
-                // Eğer apiKey ile bulunamazsa, domain ile kontrol et (duplicate domain kontrolü için)
-                if (!tenant) {
-                    const existingTenantByDomain = await Tenant.findOne({
+                // Tenant'ı sırasıyla apiKey hash → shopId → domain ile ara.
+                // Token rotasyonunda (scope güncellemesi vb.) hash değişir; shopId mağaza için sabittir.
+                const findExistingTenant = async _ => {
+                    let existing = await Tenant.findOne({
+                        'shopify.apiKey.hash': apiKey
+                    });
+                    if (existing) return existing;
+
+                    if (shop.id) {
+                        existing = await Tenant.findOne({
+                            'shopify.shopId': String(shop.id)
+                        });
+                        logger.info2(`[initializeTenant] Tenant lookup by shopId (${shop.id}): ${existing ? 'Found' : 'Not found'}`);
+                        if (existing) return existing;
+                    }
+
+                    existing = await Tenant.findOne({
                         'shopify.domain': domain
                     });
-                    
-                    logger.info2(`[initializeTenant] Tenant lookup by domain: ${existingTenantByDomain ? 'Found' : 'Not found'}`);
-                    if (existingTenantByDomain) {
-                        // Shop domain'i ile existing tenant domain'ini karşılaştır (doğrulama)
-                        const existingDomain = existingTenantByDomain.shopify?.domain;
-                        if (existingDomain === domain) {
-                            // Mevcut apiKey hash'i ile yeni apiKey hash'ini karşılaştır
-                            const existingApiKeyHash = existingTenantByDomain.shopify?.apiKey?.hash;
-                            if (existingApiKeyHash === apiKey) {
-                                // apiKey zaten aynı, güncelleme yapmaya gerek yok
-                                logger.info2(`[initializeTenant] Domain match confirmed (${domain}). ApiKey hash already matches, skipping update.`);
-                                tenant = existingTenantByDomain;
-                            } else {
-                                // Doğrulama başarılı ama apiKey farklı - apiKey'i güncelle
-                                logger.info2(`[initializeTenant] Domain match confirmed (${domain}). ApiKey hash differs. Updating apiKey for tenant: ${existingTenantByDomain.name} (ID: ${existingTenantByDomain.id || existingTenantByDomain._id})`);
-                                logger.info2(`[initializeTenant] Existing apiKey hash: ${existingApiKeyHash?.substring(0, 16) || 'N/A'}..., New apiKey hash: ${apiKey.substring(0, 16)}...`);
-                                
-                                try {
-                                    await Tenant.updateOne(
-                                        { id: existingTenantByDomain.id || existingTenantByDomain._id },
-                                        { 
-                                            'shopify.apiKey': { ...CryptoHelper.encrypt(accessToken) }
-                                        }
-                                    );
-                                    
-                                    // Güncellenmiş tenant'ı yükle
-                                    tenant = await Tenant.findOne({
-                                        id: existingTenantByDomain.id || existingTenantByDomain._id
-                                    });
-                                    
-                                    logger.info2(`[initializeTenant] Tenant apiKey updated successfully`);
-                                } catch (updateError) {
-                                    logger.error(`[initializeTenant] Error updating tenant apiKey: ${updateError.message}`);
-                                    return { ...result, status: HttpStatusCodes.SERVER_ERROR, info: `Failed to update tenant apiKey: ${updateError.message}` };
-                                }
-                            }
-                        } else {
-                            // Domain eşleşmiyor - conflict hatası
-                            logger.error(`[initializeTenant] Duplicate domain detected but domain mismatch. Requested: ${domain}, Existing: ${existingDomain}. Tenant ID: ${existingTenantByDomain.id || existingTenantByDomain._id}`);
-                            return { 
-                                ...result, 
-                                status: HttpStatusCodes.CONFLICT, 
-                                info: `Bu mağaza için zaten bir kayıt mevcut. Lütfen Shopify uygulamasını silip tekrar yükleyin. Sorununuz devam ediyorsa support@gonextso.com mail adresi ile iletişime geçiniz.` 
-                            };
-                        }
+                    logger.info2(`[initializeTenant] Tenant lookup by domain (${domain}): ${existing ? 'Found' : 'Not found'}`);
+
+                    return existing;
+                };
+
+                // Var olan tenant'ı güncel token ile eşitle, eksik shopId/domain alanlarını doldur.
+                const reconcileTenant = async existing => {
+                    const tenantId = existing.id || existing._id;
+                    const patch = {};
+
+                    const existingApiKeyHash = existing.shopify?.apiKey?.hash;
+                    if (existingApiKeyHash !== apiKey) {
+                        logger.info2(`[initializeTenant] ApiKey hash differs for tenant ${existing.name} (ID: ${tenantId}). Existing: ${existingApiKeyHash?.substring(0, 16) || 'N/A'}..., New: ${apiKey.substring(0, 16)}...`);
+                        patch['shopify.apiKey'] = { ...CryptoHelper.encrypt(accessToken) };
                     }
-                }
-                
-                // Load encrypted fields if tenant exists
-                if (tenant && tenant.shopify?.apiKey) {
-                    // Encrypted fields are already loaded by wrapper
-                }
+                    if (!existing.shopify?.shopId && shop.id) patch['shopify.shopId'] = String(shop.id);
+                    if (!existing.shopify?.domain && domain) patch['shopify.domain'] = domain;
+
+                    if (Object.keys(patch).length === 0) {
+                        logger.info2(`[initializeTenant] Tenant ${existing.name} is up to date, skipping update.`);
+                        return existing;
+                    }
+
+                    await Tenant.updateOne({ id: tenantId }, patch);
+                    logger.info2(`[initializeTenant] Tenant ${existing.name} reconciled (${Object.keys(patch).join(', ')})`);
+
+                    return await Tenant.findOne({ id: tenantId });
+                };
+
+                let tenant = await findExistingTenant();
 
                 if (tenant) {
+                    try {
+                        tenant = await reconcileTenant(tenant);
+                    } catch (updateError) {
+                        logger.error(`[initializeTenant] Error reconciling tenant: ${updateError.message}`);
+                        return { ...result, status: HttpStatusCodes.SERVER_ERROR, info: `Failed to update tenant apiKey: ${updateError.message}` };
+                    }
+
                     result = {
                         ...result,
                         status: HttpStatusCodes.SUCCESS,
@@ -169,6 +174,9 @@ export default new class ShopifyAuthController extends CoreController {
                         domain: domain,
                         shopId: shop.id,
                         customerEmail: shop.customer_email,
+                        isShopifyPlus: isShopifyPlus,
+                        currencyCode: shop.currency ?? null,
+                        countryCode: shop.country_code ?? null,
                         apiKey: { ...CryptoHelper.encrypt(accessToken) },
                         billing: activeSubscription ? {
                             planKey: planKey,
@@ -176,8 +184,6 @@ export default new class ShopifyAuthController extends CoreController {
                             subscription: {
                                 id: activeSubscription.id ?? ""
                             },
-                            tokenLimit: planConfig.TOKEN_LIMIT ?? SystemCodes.BILLING_PLANS.BASIC.TOKEN_LIMIT,
-                            tokenUsed: 0,
                             limits: {
                                 order: {
                                     limit: orderLimit,
@@ -200,88 +206,48 @@ export default new class ShopifyAuthController extends CoreController {
                 logger.info2(`[initializeTenant] Creating new tenant: ${newTenant.name}, domain: ${domain}`);
                 
                 try {
-                tenant = await Tenant.create(tenantDto);
+                    tenant = await Tenant.create(tenantDto);
                     logger.info2(`[initializeTenant] Tenant created successfully: ${tenant.name} (ID: ${tenant.id || tenant._id})`);
                     return { isSuccess: true, status: HttpStatusCodes.CREATED, info: "Tenant initialized successfully", content: tenant };
                 } catch (error) {
-                    // Duplicate domain hatasını yakala ve doğrula
-                    if (error.message && error.message.includes('Unique constraint failed') && error.message.includes('domain')) {
-                        logger.warn(`[initializeTenant] Duplicate domain error: ${domain}. Attempting to verify and update existing tenant.`);
-                        
-                        // Domain ile mevcut tenant'ı bul
-                        const existingTenant = await Tenant.findOne({
-                            'shopify.domain': domain
-                        });
-                        
+                    // Duplicate domain/shopId hatasını yakala; mevcut tenant'ı bulup eşitle
+                    const isUniqueConflict = error.message
+                        && error.message.includes('Unique constraint failed')
+                        && (error.message.includes('domain') || error.message.includes('shop_id'));
+
+                    if (isUniqueConflict) {
+                        logger.warn(`[initializeTenant] Unique constraint on create (domain: ${domain}, shopId: ${shop.id}). Attempting to reconcile existing tenant.`);
+
+                        const existingTenant = await findExistingTenant();
+
                         if (existingTenant) {
-                            // Shop domain'i ile existing tenant domain'ini karşılaştır (doğrulama)
-                            const existingDomain = existingTenant.shopify?.domain;
-                            if (existingDomain === domain) {
-                                // Mevcut apiKey hash'i ile yeni apiKey hash'ini karşılaştır
-                                const existingApiKeyHash = existingTenant.shopify?.apiKey?.hash;
-                                if (existingApiKeyHash === apiKey) {
-                                    // apiKey zaten aynı, güncelleme yapmaya gerek yok
-                                    logger.info2(`[initializeTenant] Domain match confirmed (${domain}). ApiKey hash already matches, skipping update.`);
-                                    return { 
-                                        isSuccess: true, 
-                                        status: HttpStatusCodes.SUCCESS, 
-                                        info: "Tenant already exists", 
-                                        content: existingTenant 
-                                    };
-                                } else {
-                                    // Doğrulama başarılı ama apiKey farklı - apiKey'i güncelle
-                                    logger.info2(`[initializeTenant] Domain match confirmed (${domain}). ApiKey hash differs. Updating apiKey for tenant: ${existingTenant.name} (ID: ${existingTenant.id || existingTenant._id})`);
-                                    logger.info2(`[initializeTenant] Existing apiKey hash: ${existingApiKeyHash?.substring(0, 16) || 'N/A'}..., New apiKey hash: ${apiKey.substring(0, 16)}...`);
-                                    
-                                    try {
-                                        await Tenant.updateOne(
-                                            { id: existingTenant.id || existingTenant._id },
-                                            { 
-                                                'shopify.apiKey': { ...CryptoHelper.encrypt(accessToken) }
-                                            }
-                                        );
-                                        
-                                        // Güncellenmiş tenant'ı yükle
-                                        tenant = await Tenant.findOne({
-                                            id: existingTenant.id || existingTenant._id
-                                        });
-                                        
-                                        logger.info2(`[initializeTenant] Tenant apiKey updated successfully`);
-                                        return { 
-                                            isSuccess: true, 
-                                            status: HttpStatusCodes.SUCCESS, 
-                                            info: "Tenant apiKey updated successfully", 
-                                            content: tenant 
-                                        };
-                                    } catch (updateError) {
-                                        logger.error(`[initializeTenant] Error updating tenant apiKey: ${updateError.message}`);
-                                        return { 
-                                            isSuccess: false, 
-                                            status: HttpStatusCodes.SERVER_ERROR, 
-                                            info: `Failed to update tenant apiKey: ${updateError.message}` 
-                                        };
-                                    }
-                                }
-                            } else {
-                                // Domain eşleşmiyor - conflict hatası
-                                logger.error(`[initializeTenant] Duplicate domain error but domain mismatch. Requested: ${domain}, Existing: ${existingDomain}`);
-                                return { 
-                                    isSuccess: false, 
-                                    status: HttpStatusCodes.CONFLICT, 
-                                    info: `Bu mağaza için zaten bir kayıt mevcut. Lütfen Shopify uygulamasını silip tekrar yükleyin. Sorununuz devam ediyorsa support@gonextso.com mail adresi ile iletişime geçiniz.` 
+                            try {
+                                tenant = await reconcileTenant(existingTenant);
+                                return {
+                                    isSuccess: true,
+                                    status: HttpStatusCodes.SUCCESS,
+                                    info: "Tenant already exists",
+                                    content: tenant
+                                };
+                            } catch (updateError) {
+                                logger.error(`[initializeTenant] Error reconciling tenant after create conflict: ${updateError.message}`);
+                                return {
+                                    isSuccess: false,
+                                    status: HttpStatusCodes.SERVER_ERROR,
+                                    info: `Failed to update tenant apiKey: ${updateError.message}`
                                 };
                             }
-                        } else {
-                            // Tenant bulunamadı ama unique constraint hatası var
-                            logger.error(`[initializeTenant] Duplicate domain error but tenant not found: ${domain}`);
-                            return { 
-                                isSuccess: false, 
-                                status: HttpStatusCodes.CONFLICT, 
-                                info: `Bu mağaza için zaten bir kayıt mevcut. Lütfen Shopify uygulamasını silip tekrar yükleyin. Sorununuz devam ediyorsa support@gonextso.com mail adresi ile iletişime geçiniz.` 
-                            };
                         }
+
+                        // Tenant bulunamadı ama unique constraint hatası var
+                        logger.error(`[initializeTenant] Unique constraint on create but tenant not found. Domain: ${domain}, shopId: ${shop.id}`);
+                        return {
+                            isSuccess: false,
+                            status: HttpStatusCodes.CONFLICT,
+                            info: `Bu mağaza için zaten bir kayıt mevcut. Lütfen Shopify uygulamasını silip tekrar yükleyin. Sorununuz devam ediyorsa support@gonextso.com mail adresi ile iletişime geçiniz.`
+                        };
                     }
-                    
+
                     // Diğer hatalar için
                     logger.error(`[initializeTenant] Error creating tenant: ${error.message}`);
                     return { isSuccess: false, status: HttpStatusCodes.SERVER_ERROR, info: error.message };

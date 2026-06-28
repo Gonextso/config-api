@@ -7,20 +7,38 @@ import SuccessOrder from '../models/db/postgres/SuccessOrder.js';
 import FailedOrder from '../models/db/postgres/FailedOrder.js';
 import OrderSyncBatch from '../models/db/postgres/OrderSyncBatch.js';
 import RequestLog from '../models/db/postgres/RequestLog.js';
+import Notification from '../models/db/postgres/Notification.js';
 import ClientProvider from '../cache/ClientProvider.js';
 import { applyTenantPatch, TenantPatchError } from '../helpers/TenantPatchHelper.js';
+import { markSetupStep } from '../helpers/SetupHelper.js';
 
 export default new class TenantController extends CoreController {
     constructor() {
         super();
     }
 
-    getTenant = async (req, res) => { 
+    getTenant = async (req, res) => {
         const tenant = await Tenant.findById(req.tenant.id);
 
         return this.response(res, {
             content: tenant,
             status: HttpStatusCodes.SUCCESS
+        });
+    }
+
+    getActiveNotification = async (req, res) => {
+        // Best-effort: the banner must never block the app, so failures
+        // degrade to "no notification" instead of an error response.
+        let notification = null;
+        try {
+            notification = await Notification.findActiveForTenant(req.tenant.id);
+        } catch (error) {
+            this.logger.error(error);
+        }
+
+        return this.response(res, {
+            status: HttpStatusCodes.SUCCESS,
+            content: { notification },
         });
     }
 
@@ -58,6 +76,11 @@ export default new class TenantController extends CoreController {
                     key: "product.find_in_store",
                     label: "Mağazada Bul",
                     schedule: schedules?.product?.find_in_store
+                },
+                {
+                    key: "product.market_sync",
+                    label: "Çoklu Market Senkronu",
+                    schedule: schedules?.product?.market_sync
                 },
                 {
                     key: "order.create_and_cancel",
@@ -107,10 +130,25 @@ export default new class TenantController extends CoreController {
 
     patchTenant = async (req, res) => {
         try {
-            const tenant = await applyTenantPatch(req.tenant.id, req.body, { httpRequest: this.httpRequest });
+            const { setupStep, ...updateData } = req.body ?? {};
+
+            if (setupStep && Object.keys(updateData).length === 0) {
+                await markSetupStep(req.tenant.id, setupStep);
+                const tenant = await Tenant.findById(req.tenant.id);
+                return this.response(res, {
+                    content: tenant,
+                    status: HttpStatusCodes.SUCCESS,
+                });
+            }
+
+            const result = await applyTenantPatch(req.tenant.id, updateData, {
+                httpRequest: this.httpRequest,
+                setupStep,
+            });
             return this.response(res, {
-                content: tenant,
-                status: HttpStatusCodes.SUCCESS
+                content: result.tenant,
+                meta: result.meta,
+                status: HttpStatusCodes.SUCCESS,
             });
         } catch (error) {
             if (error instanceof TenantPatchError) {
@@ -118,6 +156,7 @@ export default new class TenantController extends CoreController {
                     status: error.status,
                     info: error.info,
                     error: error.error,
+                    content: error.errorPayload ? { error: error.errorPayload } : undefined,
                 });
             }
             throw error;
@@ -187,6 +226,7 @@ export default new class TenantController extends CoreController {
                 traceId: req.query.traceId || undefined,
                 body: req.query.body || undefined,
                 response: req.query.response || undefined,
+                businessLayer: req.query.businessLayer || undefined,
             };
 
             const [items, total] = await Promise.all([
@@ -232,6 +272,26 @@ export default new class TenantController extends CoreController {
             return this.response(res, {
                 status: HttpStatusCodes.SERVER_ERROR,
                 info: "Failed to fetch request log urls",
+                error
+            });
+        }
+    }
+
+    getRequestLogBusinessLayers = async (req, res) => {
+        try {
+            const tenantId = req.tenant.id;
+            const businessLayers = await RequestLog.distinctBusinessLayers({
+                tenant: tenantId
+            });
+
+            return this.response(res, {
+                content: { businessLayers },
+                status: HttpStatusCodes.SUCCESS
+            });
+        } catch (error) {
+            return this.response(res, {
+                status: HttpStatusCodes.SERVER_ERROR,
+                info: "Failed to fetch request log business layers",
                 error
             });
         }

@@ -1,4 +1,5 @@
 import CoreAPI from "../core/CoreAPI.js";
+import storeQueries from "../models/shopify/queries/store.js";
 
 export default class ShopifyGqlAPI extends CoreAPI {
     constructor(tenant) {
@@ -31,6 +32,23 @@ export default class ShopifyGqlAPI extends CoreAPI {
         });
     
         return response.data.shop;
+    }
+
+    // Fetches the Shopify plan info (incl. shopifyPlus flag) via Admin GraphQL.
+    // Accepts shop + accessToken explicitly so it can be used during install (no tenant config yet).
+    getShopPlan = async (shop, accessToken) => {
+        const url = `https://${shop}.myshopify.com/admin/api/${process.env.SHOPIFY_API_VERSION}/graphql.json`;
+
+        const response = await this.httpRequest.gpost(url, {
+            query: storeQueries.shopPlan
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': accessToken
+            }
+        });
+
+        return response.data?.data?.shop?.plan ?? null;
     }
 
     getAccessToken = async (shop, idToken) => {

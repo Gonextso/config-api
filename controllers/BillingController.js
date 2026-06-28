@@ -3,7 +3,7 @@ import HttpStatusCodes from '../enums/HttpStatusCodes.js';
 import SystemCodes from '../enums/SystemCodes.js';
 import Tenant from '../models/db/postgres/Tenant.js';
 import { resolveSubscriptionPlan, computePeriodEndIso, planBillingLimits } from '../helpers/SubscriptionPlanMap.js';
-import { isFindInStorePlanAllowed, findInStoreScheduleDisableUpdate } from '../helpers/FindInStorePlanGuard.js';
+import { isFindInStorePlanAllowed, findInStoreScheduleDisableUpdate, marketSyncScheduleDisableUpdate } from '../helpers/FindInStorePlanGuard.js';
 
 /** Normalize Shopify AppSubscription GIDs for comparison (handles escaped slashes in payloads). */
 function normalizeAppSubscriptionGid(id) {
@@ -97,6 +97,7 @@ export default new class BillingController extends CoreController {
 
             const updateData = {
                 "shopify.billing.planKey": planConfig.KEY,
+                "shopify.isEnterprise": planConfig.KEY === SystemCodes.BILLING_PLANS.ENTERPRISE.KEY,
                 "shopify.billing.billingInterval": resolved.billingInterval,
                 "shopify.billing.subscription.id": admin_graphql_api_id,
                 "shopify.billing.limits.order.limit": orderLimit,
@@ -118,7 +119,8 @@ export default new class BillingController extends CoreController {
 
             if (!isFindInStorePlanAllowed(planConfig.KEY)) {
                 await Tenant.updateOne({ id: tenant.id }, findInStoreScheduleDisableUpdate());
-                this.logger.info2(`[BillingController] Mağazada Bul schedule disabled for ${tenant.name} (plan: ${planConfig.KEY})`);
+                await Tenant.updateOne({ id: tenant.id }, marketSyncScheduleDisableUpdate());
+                this.logger.info2(`[BillingController] Mağazada Bul & Çoklu Market schedule disabled for ${tenant.name} (plan: ${planConfig.KEY})`);
             }
             
             this.logger.info2(`[BillingController] Tenant ${tenant.name} billing activated successfully`);
@@ -170,6 +172,7 @@ export default new class BillingController extends CoreController {
             );
 
             await Tenant.updateOne({ id: tenant.id }, findInStoreScheduleDisableUpdate());
+            await Tenant.updateOne({ id: tenant.id }, marketSyncScheduleDisableUpdate());
             
             this.logger.info2(`[BillingController] Tenant ${tenant.name} billing blocked successfully`);
         } else if (status === "CANCELLED") {
@@ -199,6 +202,7 @@ export default new class BillingController extends CoreController {
                 const updateData = {
                     "shopify.billing.isBlocked": false,
                     "shopify.billing.planKey": SystemCodes.BILLING_PLANS.BASIC.KEY,
+                    "shopify.isEnterprise": false,
                     "shopify.billing.billingInterval": "MONTHLY",
                     "shopify.billing.subscription.id": null,
                     "shopify.billing.limits.order.limit": SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
@@ -219,6 +223,7 @@ export default new class BillingController extends CoreController {
                 );
 
                 await Tenant.updateOne({ id: tenant.id }, findInStoreScheduleDisableUpdate());
+                await Tenant.updateOne({ id: tenant.id }, marketSyncScheduleDisableUpdate());
 
                 this.logger.info2(`[BillingController] Tenant ${tenant.name} billing cancelled successfully`);
             }

@@ -48,10 +48,9 @@ export default class {
     static BILLING_PLANS = {
         BASIC: {
             KEY: 'BASIC',
-            TOKEN_LIMIT: 5,
             LIMITS: {
-                ORDER: 10,
-                PRODUCT_DETAILS: 500
+                ORDER: 5,
+                PRODUCT_DETAILS: 100
             },
             REDENTION: {
                 LOG: 1
@@ -59,29 +58,16 @@ export default class {
         },
         COMMUNITY: {
             KEY: 'COMMUNITY',
-            TOKEN_LIMIT: 500,
             LIMITS: {
-                ORDER: 30,
-                PRODUCT_DETAILS: 1000
+                ORDER: 50,
+                PRODUCT_DETAILS: 5000
             },
             REDENTION: {
                 LOG: 5
             }
         },
-        PRO: {
-            KEY: 'PRO',
-            TOKEN_LIMIT: 1500,
-            LIMITS: {
-                ORDER: 100,
-                PRODUCT_DETAILS: 5000
-            },
-            REDENTION: {
-                LOG: 10
-            }
-        },
         ENTERPRISE: {
             KEY: 'ENTERPRISE',
-            TOKEN_LIMIT: 0,
             LIMITS: {
                 ORDER: 0,
                 PRODUCT_DETAILS: 0
