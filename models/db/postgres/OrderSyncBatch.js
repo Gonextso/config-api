@@ -72,6 +72,39 @@ class OrderSyncBatchModel {
   }
 
   /**
+   * Find recent sync batches across all tenants (admin overview)
+   */
+  async findRecentGlobal(limit = 6) {
+    const safeLimit = Math.min(50, Math.max(1, Number(limit) || 6));
+    const batches = await prisma.syncBatch.findMany({
+      take: safeLimit,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return batches.map((batch) => {
+      const formatted = this._transformToMongoFormat(batch);
+      if (batch.tenant) {
+        formatted.tenant = {
+          _id: batch.tenant.id,
+          id: batch.tenant.id,
+          name: batch.tenant.name,
+        };
+      }
+      return formatted;
+    });
+  }
+
+  /**
    * Build where clause from MongoDB-style query
    */
   _buildWhereClause(query) {

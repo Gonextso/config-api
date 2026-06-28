@@ -24,6 +24,7 @@ const mockTenantModel = {
 const mockOrderSyncBatchModel = {
   find: jest.fn(),
   findOne: jest.fn(),
+  findRecentGlobal: jest.fn(),
 };
 
 const mockRequestLogModel = {
@@ -125,6 +126,7 @@ describe('AdminController', () => {
     mockTenantModel.deleteMany.mockResolvedValue({ deletedCount: 5 });
     mockOrderSyncBatchModel.find.mockResolvedValue([]);
     mockOrderSyncBatchModel.findOne.mockResolvedValue(null);
+    mockOrderSyncBatchModel.findRecentGlobal.mockResolvedValue([]);
     mockRequestLogModel.find.mockResolvedValue([]);
     mockRequestLogModel.findSummary.mockResolvedValue([]);
     mockRequestLogModel.distinctUrls.mockResolvedValue([]);
@@ -245,7 +247,7 @@ describe('AdminController', () => {
 
     it('should return paged logs for tenant', async () => {
       mockReq.params = { tenant_id: tenantId };
-      mockReq.query = {};
+      mockReq.query = { traceId: 'trace-1', body: 'tenant', response: 'ok' };
       mockRequestLogModel.findSummary.mockResolvedValue([{ id: 'log-1' }]);
       mockRequestLogModel.distinctUrls.mockResolvedValue(['/orders/sync']);
       await AdminController.getTenantLogs(mockReq, mockRes);
@@ -254,7 +256,9 @@ describe('AdminController', () => {
         url: undefined,
         method: undefined,
         status: undefined,
-        traceId: undefined,
+        traceId: 'trace-1',
+        body: 'tenant',
+        response: 'ok',
       });
       expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
         status: HttpStatusCodes.SUCCESS,
@@ -272,11 +276,45 @@ describe('AdminController', () => {
       await AdminController.patchTenantBilling(mockReq, mockRes);
       expect(mockTenantModel.updateOne).toHaveBeenCalledWith(
         { id: tenantId },
-        { shopify: { billing: { planKey: 'COMMUNITY' } } },
+        expect.objectContaining({
+          shopify: expect.objectContaining({
+            billing: { planKey: 'COMMUNITY' },
+          }),
+        }),
       );
       expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
         status: HttpStatusCodes.SUCCESS,
         content: mockTenant.shopify.billing,
+      });
+    });
+
+    it('should persist isBlocked when patching tenant billing', async () => {
+      mockReq.params = { tenant_id: tenantId };
+      mockReq.body = {
+        billing: {
+          ...mockTenant.shopify.billing,
+          isBlocked: true,
+        },
+      };
+      mockTenantModel.updateOne.mockResolvedValue({
+        ...mockTenant,
+        shopify: {
+          ...mockTenant.shopify,
+          billing: { ...mockTenant.shopify.billing, isBlocked: true },
+        },
+      });
+      await AdminController.patchTenantBilling(mockReq, mockRes);
+      expect(mockTenantModel.updateOne).toHaveBeenCalledWith(
+        { id: tenantId },
+        expect.objectContaining({
+          shopify: expect.objectContaining({
+            billing: expect.objectContaining({ isBlocked: true }),
+          }),
+        }),
+      );
+      expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
+        status: HttpStatusCodes.SUCCESS,
+        content: expect.objectContaining({ isBlocked: true }),
       });
     });
 
@@ -288,6 +326,36 @@ describe('AdminController', () => {
       expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
         status: HttpStatusCodes.SUCCESS,
         content: { id: 'job-1', process: 'SYNC_ORDERS' },
+      });
+    });
+
+    it('should return recent jobs across tenants', async () => {
+      mockReq.query = { limit: '6' };
+      mockOrderSyncBatchModel.findRecentGlobal.mockResolvedValue([
+        {
+          id: 'job-1',
+          process: 'SYNC_ORDERS',
+          numbers: { total: 10 },
+          isErrorLogExistsForThisBatch: false,
+          traceId: 'trace-1',
+          createdAt: '2026-06-28T10:00:00.000Z',
+          tenant: { id: tenantId, name: 'Test Tenant' },
+        },
+      ]);
+      await AdminController.getRecentJobs(mockReq, mockRes);
+      expect(mockOrderSyncBatchModel.findRecentGlobal).toHaveBeenCalledWith(6);
+      expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
+        status: HttpStatusCodes.SUCCESS,
+        content: {
+          items: [
+            expect.objectContaining({
+              id: 'job-1',
+              tenantId,
+              tenantName: 'Test Tenant',
+              process: 'SYNC_ORDERS',
+            }),
+          ],
+        },
       });
     });
   });

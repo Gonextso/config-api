@@ -7,6 +7,7 @@ import RequestLog from "../models/db/postgres/RequestLog.js";
 import UuidHelper from "../helpers/UuidHelper.js";
 import ObjectHelper from "../helpers/ObjectHelper.js";
 import { isFindInStorePlanAllowed, findInStoreScheduleDisableUpdate } from "../helpers/FindInStorePlanGuard.js";
+import { applyTenantPatch, TenantPatchError } from "../helpers/TenantPatchHelper.js";
 
 export default new class AdminController extends CoreController {
     constructor() {
@@ -78,6 +79,7 @@ export default new class AdminController extends CoreController {
         const scheduleItems = [
             tenant?.shopify?.schedules?.nebim?.product?.inventory,
             tenant?.shopify?.schedules?.nebim?.product?.details,
+            tenant?.shopify?.schedules?.nebim?.product?.find_in_store,
             tenant?.shopify?.schedules?.nebim?.order?.create_and_cancel,
             tenant?.shopify?.schedules?.nebim?.order?.status,
             tenant?.shopify?.schedules?.redention?.logs,
@@ -113,6 +115,8 @@ export default new class AdminController extends CoreController {
             method: req.query.method || undefined,
             status: Number.isNaN(status) ? undefined : status,
             traceId: req.query.traceId || req.query.trace_id || undefined,
+            body: req.query.body || undefined,
+            response: req.query.response || undefined,
         };
 
         const [data, urls] = await Promise.all([
@@ -171,6 +175,35 @@ export default new class AdminController extends CoreController {
         });
     }
 
+    getRecentJobs = async (req, res) => {
+        const limit = Number(req.query.limit) || 6;
+        const items = await OrderSyncBatch.findRecentGlobal(limit);
+        const content = items.map((item) => {
+            const tenant = typeof item.tenant === "object" ? item.tenant : null;
+            return {
+                id: item.id,
+                tenantId: tenant?.id ?? item.tenant,
+                tenantName: tenant?.name ?? "Tenant",
+                process: item.process,
+                total: item.numbers?.total ?? null,
+                createOrderTotal: item.numbers?.createOrderTotal ?? null,
+                createOrderSuccess: item.numbers?.createOrderSuccess ?? null,
+                createOrderError: item.numbers?.createOrderError ?? null,
+                cancelOrderTotal: item.numbers?.cancelOrderTotal ?? null,
+                cancelOrderSuccess: item.numbers?.cancelOrderSuccess ?? null,
+                cancelOrderError: item.numbers?.cancelOrderError ?? null,
+                isErrorLogExistsForBatch: item.isErrorLogExistsForThisBatch ?? null,
+                traceId: item.traceId ?? "",
+                createdAt: item.createdAt,
+            };
+        });
+
+        return this.response(res, {
+            status: HttpStatusCodes.SUCCESS,
+            content: { items: content },
+        });
+    }
+
     getTenantJobById = async (req, res) => {
         const tenantId = req.params.tenant_id;
         const jobId = req.params.job_id;
@@ -189,6 +222,28 @@ export default new class AdminController extends CoreController {
             status: HttpStatusCodes.SUCCESS,
             content: item,
         });
+    }
+
+    patchTenantSettings = async (req, res) => {
+        const tenantId = req.params.tenant_id;
+        if (!this._validateTenantId(tenantId, res)) return;
+
+        try {
+            const tenant = await applyTenantPatch(tenantId, req.body, { httpRequest: this.httpRequest });
+            return this.response(res, {
+                status: HttpStatusCodes.SUCCESS,
+                content: tenant,
+            });
+        } catch (error) {
+            if (error instanceof TenantPatchError) {
+                return this.response(res, {
+                    status: error.status,
+                    info: error.info,
+                    error: error.error,
+                });
+            }
+            throw error;
+        }
     }
 
     patchTenantBilling = async (req, res) => {
