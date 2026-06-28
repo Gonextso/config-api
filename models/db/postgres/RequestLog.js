@@ -71,11 +71,12 @@ class RequestLogModel {
     const safePage = page < 0 ? 0 : page;
     const safeLimit = limit > 0 ? limit : 25;
     const skip = safePage * safeLimit;
+    const sortDirection = query.sortOrder === 'ASC' ? 'asc' : 'desc';
 
     const logs = await prisma.requestLog.findMany({
       where,
       orderBy: {
-        createdAt: 'desc',
+        createdAt: sortDirection,
       },
       skip,
       take: safeLimit,
