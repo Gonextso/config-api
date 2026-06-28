@@ -174,14 +174,19 @@ export default new class TenantController extends CoreController {
             const page = Number(req.query.page || 0);
             const limit = Number(req.query.limit || 25);
             const status = req.query.status !== undefined ? Number(req.query.status) : undefined;
+            const sortOrder = req.query.sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
             const query = {
                 tenant: tenantId,
                 page,
                 limit,
+                sortOrder,
                 url: req.query.url || undefined,
                 method: req.query.method || undefined,
-                status: Number.isNaN(status) ? undefined : status
+                status: Number.isNaN(status) ? undefined : status,
+                traceId: req.query.traceId || undefined,
+                body: req.query.body || undefined,
+                response: req.query.response || undefined,
             };
 
             const [items, total] = await Promise.all([
