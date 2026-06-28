@@ -888,6 +888,22 @@ class TenantModel {
           pendingNonce: tenant.pricing.pendingNonce,
           pendingPlanKey: tenant.pricing.pendingPlanKey,
         };
+      } else {
+        // pricing satırı yoksa BASIC default — bloklanmış sayılmaz
+        result.shopify.billing = {
+          planKey: 'BASIC',
+          billingInterval: 'MONTHLY',
+          subscription: { id: null, lineId: null },
+          limits: {
+            order: { limit: 10, used: 0 },
+            product_details: { limit: 500, used: 0 },
+          },
+          periodStart: new Date().toISOString(),
+          periodEnd: new Date(Date.now() + 30 * 864e5).toISOString(),
+          isBlocked: false,
+          pendingNonce: null,
+          pendingPlanKey: null,
+        };
       }
 
       if (tenant.schedules) {
