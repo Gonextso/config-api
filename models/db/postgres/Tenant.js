@@ -162,7 +162,7 @@ class TenantModel {
         create: {
           planKey: 'BASIC',
           billingInterval: 'MONTHLY',
-          orderLimit: 10,
+          orderLimit: SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
           orderUsed: 0,
           productDetailsLimit: 500,
           productDetailsUsed: 0,
@@ -308,7 +308,7 @@ class TenantModel {
           create: {
             planKey: 'BASIC',
             billingInterval: 'MONTHLY',
-            orderLimit: 10,
+            orderLimit: SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
             orderUsed: 0,
             productDetailsLimit: 500,
             productDetailsUsed: 0,
@@ -605,7 +605,7 @@ class TenantModel {
           billingInterval: data.shopify.billing.billingInterval || 'MONTHLY',
           subscriptionId: data.shopify.billing.subscription?.id || null,
           subscriptionLineId: data.shopify.billing.subscription?.lineId || null,
-          orderLimit: data.shopify.billing.limits?.order?.limit ?? 10,
+          orderLimit: data.shopify.billing.limits?.order?.limit ?? SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER,
           orderUsed: data.shopify.billing.limits?.order?.used ?? 0,
           productDetailsLimit: data.shopify.billing.limits?.product_details?.limit ?? 500,
           productDetailsUsed: data.shopify.billing.limits?.product_details?.used ?? 0,
@@ -1046,7 +1046,7 @@ class TenantModel {
           billingInterval: 'MONTHLY',
           subscription: { id: null, lineId: null },
           limits: {
-            order: { limit: 10, used: 0 },
+            order: { limit: SystemCodes.BILLING_PLANS.BASIC.LIMITS.ORDER, used: 0 },
             product_details: { limit: 500, used: 0 },
           },
           periodStart: new Date().toISOString(),
