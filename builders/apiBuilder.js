@@ -15,6 +15,7 @@ import AuthMiddleware from '../middlewares/AuthMiddleware.js';
 import LogHelper from '../helpers/LogHelper.js';
 import shopifyGdprRouter from '../routes/shopify/gdpr.js';
 import shopifyShopRouter from '../routes/shopify/shop.js';
+import shopifyConsentRouter from '../routes/shopify/consent.js';
 
 let logger = new LogHelper();
 
@@ -80,6 +81,7 @@ app.use(`${routePrefix}/shopify/auth`, shopifyAuthRouter);
 app.use(`${routePrefix}/shopify/webhooks/gdpr`, shopifyGdprRouter);
 app.use(`${routePrefix}/shopify/webhooks/billing`, shopifyBillingRouter);
 app.use(`${routePrefix}/shopify/webhooks/shop`, shopifyShopRouter);
+app.use(`${routePrefix}/shopify/webhooks/consent`, shopifyConsentRouter);
 app.use(`${routePrefix}/tenant`, AuthMiddleware.isShopifyAuthenticated, tenantRouter);
 app.use(`${routePrefix}/proxy`, AuthMiddleware.isShopifyAuthenticated, proxyRouter);
 
