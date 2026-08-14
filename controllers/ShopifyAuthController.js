@@ -445,6 +445,14 @@ export default new class ShopifyAuthController extends CoreController {
             });
         }
 
+        if (!consent?.consent_updated_at) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing consent_updated_at"
+            });
+        }
+
         try {
             const response = await this.httpRequest.post(
                 `${process.env.INTEGRATION_API_HOST}/shopify/nebim/customer/consent/email`,
@@ -511,6 +519,14 @@ export default new class ShopifyAuthController extends CoreController {
                 isSuccess: false,
                 status: HttpStatusCodes.BAD_REQUEST,
                 info: "Missing phone"
+            });
+        }
+
+        if (!consent?.consent_updated_at) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing consent_updated_at"
             });
         }
 
