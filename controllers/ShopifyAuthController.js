@@ -413,4 +413,158 @@ export default new class ShopifyAuthController extends CoreController {
             content: req.body
         });
     }
+
+    handleEmailConsent = async (req, res) => {
+        this.logger.info(`Shopify email consent webhook received: ${JSON.stringify(req.body)}`);
+
+        const shopDomain = req.get("x-shopify-shop-domain");
+        if (!shopDomain) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing x-shopify-shop-domain"
+            });
+        }
+
+        const tenant = await Tenant.findOne({ "shopify.domain": shopDomain });
+        if (!tenant) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.SUCCESS,
+                info: "Tenant not found"
+            });
+        }
+
+        const emailAddress = req.body?.email_address;
+        const consent = req.body?.email_marketing_consent;
+        if (!emailAddress) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing email_address"
+            });
+        }
+
+        if (!consent?.consent_updated_at) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing consent_updated_at"
+            });
+        }
+
+        try {
+            const response = await this.httpRequest.post(
+                `${process.env.INTEGRATION_API_HOST}/shopify/nebim/customer/consent/email`,
+                {
+                    email: emailAddress,
+                    phone: req.body?.phone,
+                    consents: {
+                        email: {
+                            date: consent?.consent_updated_at,
+                            is_opt_in: String(consent?.state || "").toLowerCase() === "subscribed",
+                        },
+                    },
+                },
+                {
+                    headers: {
+                        "x-tenant-id": tenant.id,
+                    },
+                },
+            );
+
+            return this.response(res, {
+                isSuccess: true,
+                status: HttpStatusCodes.SUCCESS,
+                content: response.data?.content
+            });
+        } catch (error) {
+            if (error.response?.status === 404) {
+                return this.response(res, {
+                    isSuccess: true,
+                    status: HttpStatusCodes.SUCCESS,
+                    info: "Customer not found in Nebim"
+                });
+            }
+
+            throw error;
+        }
+    }
+
+    handleGsmConsent = async (req, res) => {
+        this.logger.info(`Shopify gsm consent webhook received: ${JSON.stringify(req.body)}`);
+
+        const shopDomain = req.get("x-shopify-shop-domain");
+        if (!shopDomain) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing x-shopify-shop-domain"
+            });
+        }
+
+        const tenant = await Tenant.findOne({ "shopify.domain": shopDomain });
+        if (!tenant) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.SUCCESS,
+                info: "Tenant not found"
+            });
+        }
+
+        const phone = req.body?.phone;
+        const consent = req.body?.sms_marketing_consent;
+        if (!phone) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing phone"
+            });
+        }
+
+        if (!consent?.consent_updated_at) {
+            return this.response(res, {
+                isSuccess: false,
+                status: HttpStatusCodes.BAD_REQUEST,
+                info: "Missing consent_updated_at"
+            });
+        }
+
+        try {
+            const response = await this.httpRequest.post(
+                `${process.env.INTEGRATION_API_HOST}/shopify/nebim/customer/consent/gsm`,
+                {
+                    email: req.body?.email,
+                    phone,
+                    consents: {
+                        gsm: {
+                            date: consent?.consent_updated_at,
+                            is_opt_in: String(consent?.state || "").toLowerCase() === "subscribed",
+                        },
+                    },
+                },
+                {
+                    headers: {
+                        "x-tenant-id": tenant.id,
+                    },
+                },
+            );
+
+            return this.response(res, {
+                isSuccess: true,
+                status: HttpStatusCodes.SUCCESS,
+                content: response.data?.content
+            });
+        } catch (error) {
+            if (error.response?.status === 404) {
+                return this.response(res, {
+                    isSuccess: true,
+                    status: HttpStatusCodes.SUCCESS,
+                    info: "Customer not found in Nebim"
+                });
+            }
+
+            throw error;
+        }
+    }
 }
