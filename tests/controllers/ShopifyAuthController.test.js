@@ -91,7 +91,11 @@ describe('ShopifyAuthController consent webhooks', () => {
     process.env.INTEGRATION_API_HOST = 'http://integration-api/rest/integration/v1';
 
     mockReq = {
-      get: jest.fn().mockReturnValue('test-shop.myshopify.com'),
+      get: jest.fn((header) => {
+        if (header === 'x-shopify-shop-domain') return 'test-shop.myshopify.com';
+        if (header === 'x-shopify-webhook-id') return 'webhook-1';
+        return undefined;
+      }),
       body: {},
     };
 
@@ -102,7 +106,11 @@ describe('ShopifyAuthController consent webhooks', () => {
     };
 
     jest.clearAllMocks();
-    mockReq.get.mockReturnValue('test-shop.myshopify.com');
+    mockReq.get.mockImplementation((header) => {
+      if (header === 'x-shopify-shop-domain') return 'test-shop.myshopify.com';
+      if (header === 'x-shopify-webhook-id') return 'webhook-1';
+      return undefined;
+    });
     mockCoreController.response.mockReturnValue(mockRes);
   });
 
@@ -136,6 +144,10 @@ describe('ShopifyAuthController consent webhooks', () => {
               date: '2024-02-01T12:30:00Z',
               is_opt_in: true,
             },
+          },
+          audit: {
+            sourceEventId: 'webhook-1',
+            sourcePayload: mockReq.body,
           },
         },
         {
