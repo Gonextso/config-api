@@ -147,6 +147,7 @@ class TenantModel {
           procFindStoreInventory: 'sp_GO_FindInStore',
           procGetStoreInfo: 'sp_GO_GetStoreInfo',
           procCustomerCheck: 'sp_GO_GetCustomer',
+          procCustomerConcents: 'sp_GO_GetCustomerConcents',
           procOrderStatus: 'sp_GO_OrderStatus',
           procDefaultsAddressCodes: 'sp_GO_GetAddressList',
           procInputValidation: 'sp_GO_InputValidator',
@@ -191,6 +192,9 @@ class TenantModel {
           nebimOrderStatusInterval: '0 * * * *',
           nebimOrderStatusStartDate: moment().subtract(1, 'days').toDate(),
           nebimOrderStatusIsActive: false,
+          nebimCustomerConcentsInterval: '0 0 * * *',
+          nebimCustomerConcentsStartDate: moment().subtract(1, 'days').toDate(),
+          nebimCustomerConcentsIsActive: true,
           nebimProductFindInStoreInterval: '*/30 * * * *',
           nebimProductFindInStoreStartDate: moment().subtract(30, 'minutes').toDate(),
           nebimProductFindInStoreIsActive: false,
@@ -282,6 +286,7 @@ class TenantModel {
             procFindStoreInventory: 'sp_GO_FindInStore',
             procGetStoreInfo: 'sp_GO_GetStoreInfo',
             procCustomerCheck: 'sp_GO_GetCustomer',
+            procCustomerConcents: 'sp_GO_GetCustomerConcents',
             procOrderStatus: 'sp_GO_OrderStatus',
             procDefaultsAddressCodes: 'sp_GO_GetAddressList',
             procInputValidation: 'sp_GO_InputValidator',
@@ -338,6 +343,9 @@ class TenantModel {
             nebimOrderStatusInterval: '0 * * * *',
             nebimOrderStatusStartDate: moment().subtract(1, 'days').toDate(),
             nebimOrderStatusIsActive: false,
+            nebimCustomerConcentsInterval: '0 0 * * *',
+            nebimCustomerConcentsStartDate: moment().subtract(1, 'days').toDate(),
+            nebimCustomerConcentsIsActive: true,
             nebimProductFindInStoreInterval: '*/30 * * * *',
             nebimProductFindInStoreStartDate: moment().subtract(30, 'minutes').toDate(),
             nebimProductFindInStoreIsActive: false,
@@ -631,6 +639,9 @@ class TenantModel {
           nebimOrderStatusInterval: data.shopify.schedules.nebim?.order?.status?.interval || '0 * * * *',
           nebimOrderStatusStartDate: data.shopify.schedules.nebim?.order?.status?.startDate ? new Date(data.shopify.schedules.nebim.order.status.startDate) : moment().subtract(1, 'days').toDate(),
           nebimOrderStatusIsActive: data.shopify.schedules.nebim?.order?.status?.isActive ?? false,
+          nebimCustomerConcentsInterval: data.shopify.schedules.nebim?.customer?.concents?.interval || '0 0 * * *',
+          nebimCustomerConcentsStartDate: data.shopify.schedules.nebim?.customer?.concents?.startDate ? new Date(data.shopify.schedules.nebim.customer.concents.startDate) : moment().subtract(1, 'days').toDate(),
+          nebimCustomerConcentsIsActive: data.shopify.schedules.nebim?.customer?.concents?.isActive ?? true,
           nebimProductFindInStoreInterval: data.shopify.schedules.nebim?.product?.find_in_store?.interval || '*/30 * * * *',
           nebimProductFindInStoreStartDate: data.shopify.schedules.nebim?.product?.find_in_store?.startDate ? new Date(data.shopify.schedules.nebim.product.find_in_store.startDate) : moment().subtract(30, 'minutes').toDate(),
           nebimProductFindInStoreIsActive: data.shopify.schedules.nebim?.product?.find_in_store?.isActive ?? false,
@@ -693,6 +704,7 @@ class TenantModel {
         procFindStoreInventory: data.nebim.procNames?.product?.findInStore || 'sp_GO_FindInStore',
         procGetStoreInfo: data.nebim.procNames?.product?.storeInfo || 'sp_GO_GetStoreInfo',
         procCustomerCheck: data.nebim.procNames?.customer?.check || 'sp_GO_GetCustomer',
+        procCustomerConcents: data.nebim.procNames?.customer?.concents || 'sp_GO_GetCustomerConcents',
         procOrderStatus: data.nebim.procNames?.order?.status || 'sp_GO_OrderStatus',
         procDefaultsAddressCodes: data.nebim.procNames?.defaults?.addressCodes || 'sp_GO_GetAddressList',
         procInputValidation: data.nebim.procNames?.inputValidation || 'sp_GO_InputValidator',
@@ -934,6 +946,7 @@ class TenantModel {
     if (procNames.product?.findInStore !== undefined) out.procFindStoreInventory = procNames.product.findInStore || 'sp_GO_FindInStore';
     if (procNames.product?.storeInfo !== undefined) out.procGetStoreInfo = procNames.product.storeInfo || 'sp_GO_GetStoreInfo';
     if (procNames.customer?.check !== undefined) out.procCustomerCheck = procNames.customer.check || 'sp_GO_GetCustomer';
+    if (procNames.customer?.concents !== undefined) out.procCustomerConcents = procNames.customer.concents || 'sp_GO_GetCustomerConcents';
     if (procNames.order?.status !== undefined) out.procOrderStatus = procNames.order.status || 'sp_GO_OrderStatus';
     if (procNames.defaults?.addressCodes !== undefined) out.procDefaultsAddressCodes = procNames.defaults.addressCodes || 'sp_GO_GetAddressList';
     if (procNames.inputValidation !== undefined) out.procInputValidation = procNames.inputValidation || 'sp_GO_InputValidator';
@@ -1083,6 +1096,13 @@ class TenantModel {
                 contentStartDate: tenant.schedules.nebimProductMarketContentStartDate ? tenant.schedules.nebimProductMarketContentStartDate.toISOString() : null,
               },
             },
+            customer: {
+              concents: {
+                interval: tenant.schedules.nebimCustomerConcentsInterval,
+                startDate: tenant.schedules.nebimCustomerConcentsStartDate.toISOString(),
+                isActive: tenant.schedules.nebimCustomerConcentsIsActive,
+              },
+            },
             order: {
               create_and_cancel: {
                 interval: tenant.schedules.nebimOrderCreateCancelInterval,
@@ -1160,6 +1180,7 @@ class TenantModel {
           },
           customer: {
             check: tenant.nebim.procCustomerCheck,
+            concents: tenant.nebim.procCustomerConcents,
           },
           order: {
             status: tenant.nebim.procOrderStatus,
@@ -1187,4 +1208,3 @@ class TenantModel {
 
 // Export singleton instance
 export default new TenantModel();
-
