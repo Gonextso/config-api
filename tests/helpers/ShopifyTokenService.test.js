@@ -297,4 +297,100 @@ describe('ShopifyTokenService', () => {
             expect(await ShopifyTokenService.getAccessToken(TENANT, SHOP)).toBe('shpat_new');
         });
     });
+
+    describe('migrateLegacyToken', () => {
+        const failure = (status, error) => ({ ok: false, status, json: async () => ({ error }) });
+
+        it('exchanges a legacy token for an expiring pair under a row lock', async () => {
+            rows.set(TENANT, accessColumns('shpat_legacy'));
+            global.fetch.mockResolvedValue(refreshResponse(1));
+
+            const result = await ShopifyTokenService.migrateLegacyToken(TENANT, SHOP);
+
+            expect(result).toEqual({ migrated: true, token: 'shpat_new_1' });
+            expect(lockCalls[0].sql).toContain('FOR UPDATE');
+
+            const [url, init] = global.fetch.mock.calls[0];
+            expect(url).toBe(`https://${SHOP}/admin/oauth/access_token`);
+            expect(init.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+            expect(Object.fromEntries(init.body)).toEqual({
+                client_id: 'client-id',
+                client_secret: 'client-secret',
+                grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+                subject_token: 'shpat_legacy',
+                subject_token_type: 'urn:shopify:params:oauth:token-type:offline-access-token',
+                requested_token_type: 'urn:shopify:params:oauth:token-type:offline-access-token',
+                expiring: '1',
+            });
+
+            const row = rows.get(TENANT);
+            expect(decrypt(row, 'apiKey')).toBe('shpat_new_1');
+            expect(decrypt(row, 'refreshToken')).toBe('shprt_new_1');
+            expect(row.accessTokenExpiresAt.getTime()).toBeGreaterThan(Date.now() + 55 * MINUTE);
+            expect(row.refreshTokenExpiresAt.getTime()).toBeGreaterThan(Date.now() + 89 * 24 * 60 * MINUTE);
+            expect(row.tokenRefreshedAt).toBeInstanceOf(Date);
+            expect(row.reauthRequiredAt).toBeNull();
+        });
+
+        it('serves the migrated token instead of a cached legacy one', async () => {
+            rows.set(TENANT, accessColumns('shpat_legacy'));
+            expect(await ShopifyTokenService.getAccessToken(TENANT, SHOP)).toBe('shpat_legacy');
+            global.fetch.mockResolvedValue(refreshResponse(2));
+
+            await ShopifyTokenService.migrateLegacyToken(TENANT, SHOP);
+
+            expect(await ShopifyTokenService.getAccessToken(TENANT, SHOP)).toBe('shpat_new_2');
+        });
+
+        it('skips rows that became expiring while waiting for the lock', async () => {
+            const expiring = { ...accessColumns('shpat_app', new Date(Date.now() + 50 * MINUTE)), ...refreshColumns('shprt_app') };
+            rows.set(TENANT, expiring);
+
+            expect(await ShopifyTokenService.migrateLegacyToken(TENANT, SHOP)).toEqual({ migrated: false, reason: 'already_expiring' });
+            expect(global.fetch).not.toHaveBeenCalled();
+            expect(rows.get(TENANT)).toEqual(expiring);
+        });
+
+        it('skips tenants without a stored token', async () => {
+            expect(await ShopifyTokenService.migrateLegacyToken(TENANT, SHOP)).toEqual({ migrated: false, reason: 'no_token' });
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['an invalid subject token', () => failure(400, 'invalid_subject_token'), 400, 'invalid_subject_token'],
+            ['an uninstalled shop', () => failure(401, 'invalid_request'), 401, 'invalid_request'],
+            ['a response without a refresh token', () => ({ ok: true, status: 200, json: async () => ({ access_token: 'shpat_x', expires_in: 3600 }) }), 200, undefined],
+        ])('leaves the row untouched and does not flag re-auth on %s', async (_label, response, status, error) => {
+            const legacy = accessColumns('shpat_legacy');
+            rows.set(TENANT, legacy);
+            global.fetch.mockResolvedValue(response());
+
+            const result = await ShopifyTokenService.migrateLegacyToken(TENANT, SHOP);
+
+            expect(result).toMatchObject({ migrated: false, reason: 'exchange_failed', status });
+            if (error) expect(result.error).toBe(error);
+            expect(rows.get(TENANT)).toEqual(legacy);
+            expect(authShopify.update).not.toHaveBeenCalled();
+        });
+
+        it('leaves the row untouched on network errors', async () => {
+            const legacy = accessColumns('shpat_legacy');
+            rows.set(TENANT, legacy);
+            global.fetch.mockRejectedValue(new Error('socket hang up'));
+
+            const result = await ShopifyTokenService.migrateLegacyToken(TENANT, SHOP);
+
+            expect(result).toMatchObject({ migrated: false, reason: 'exchange_failed', error: 'socket hang up' });
+            expect(rows.get(TENANT)).toEqual(legacy);
+        });
+
+        it('never puts token values in failure reasons', async () => {
+            rows.set(TENANT, accessColumns('shpat_legacy'));
+            global.fetch.mockResolvedValue({ ok: false, status: 500, json: async () => ({ access_token: 'shpat_leak', refresh_token: 'shprt_leak' }) });
+
+            const result = await ShopifyTokenService.migrateLegacyToken(TENANT, SHOP);
+
+            expect(JSON.stringify(result)).not.toMatch(/shpat_|shprt_/);
+        });
+    });
 });
