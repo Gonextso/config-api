@@ -97,3 +97,57 @@ describe('AuthMiddleware.isShopifyAuthenticated', () => {
         expect(next).not.toHaveBeenCalled();
     });
 });
+
+describe('AuthMiddleware.isAppTokenAuthenticated', () => {
+    let req;
+    let res;
+    let next;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        req = { headers: {} };
+        res = {};
+        next = jest.fn();
+    });
+
+    it('sets req.tenant for a valid bearer token', async () => {
+        mockTenantModel.findOne.mockResolvedValue(tenant());
+        req.headers.authorization = `Bearer ${AppTokenHelper.mint('demo-store.myshopify.com', { secret: SECRET })}`;
+
+        await AuthMiddleware.isAppTokenAuthenticated(req, res, next);
+
+        expect(mockTenantModel.findOne).toHaveBeenCalledWith({ name: 'demo-store' });
+        expect(req.tenant.name).toBe('demo-store');
+        expect(req.appToken.shop).toBe('demo-store.myshopify.com');
+        expect(next).toHaveBeenCalled();
+    });
+
+    it('does not accept the legacy x-api-key', async () => {
+        req.headers['x-api-key'] = 'shpat_legacy';
+
+        await AuthMiddleware.isAppTokenAuthenticated(req, res, next);
+
+        expect(mockTenantModel.findOne).not.toHaveBeenCalled();
+        expect(mockResponse).toHaveBeenCalledWith(res, { status: HttpStatusCodes.UNAUTHORIZED, info: 'Bearer app token required' });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid bearer token', async () => {
+        req.headers.authorization = `Bearer ${AppTokenHelper.mint('demo-store.myshopify.com', { secret: 'wrong' })}`;
+
+        await AuthMiddleware.isAppTokenAuthenticated(req, res, next);
+
+        expect(mockResponse).toHaveBeenCalledWith(res, { status: HttpStatusCodes.UNAUTHORIZED, info: 'Unauthorized access: Invalid token signature' });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    it('returns NOT_FOUND when the shop has no tenant yet', async () => {
+        mockTenantModel.findOne.mockResolvedValue(null);
+        req.headers.authorization = `Bearer ${AppTokenHelper.mint('new-store.myshopify.com', { secret: SECRET })}`;
+
+        await AuthMiddleware.isAppTokenAuthenticated(req, res, next);
+
+        expect(mockResponse).toHaveBeenCalledWith(res, { status: HttpStatusCodes.NOT_FOUND, info: 'Tenant not found.' });
+        expect(next).not.toHaveBeenCalled();
+    });
+});

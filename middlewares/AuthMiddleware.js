@@ -88,6 +88,32 @@ export default new class AuthMiddleware extends CoreController {
         return next();
     }
 
+    // Bearer app token only (no legacy x-api-key fallback). Used by endpoints that write
+    // credentials, where the caller must prove it is the app server for this exact shop.
+    isAppTokenAuthenticated = async (req, res, next) => {
+        const bearer = AppTokenHelper.getBearerToken(req);
+        if (!bearer) {
+            return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED, info: "Bearer app token required" });
+        }
+
+        let claims;
+        try {
+            claims = AppTokenHelper.verify(bearer);
+        } catch (error) {
+            return this.response(res, { status: HttpStatusCodes.UNAUTHORIZED, info: `Unauthorized access: ${error.message}` });
+        }
+
+        const tenant = await Tenant.findOne({ name: claims.tenantName });
+        if (!tenant) {
+            return this.response(res, { status: HttpStatusCodes.NOT_FOUND, info: "Tenant not found." });
+        }
+
+        req.tenant = tenant;
+        req.appToken = claims;
+
+        return next();
+    }
+
     validateIdToken = async (req, res, next) => {
         const idToken = req.headers['x-api-key'] ?? "";
         const tenantId = req.headers["x-tenant-id"] || req.get("x-tenant-id");
