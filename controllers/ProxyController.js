@@ -38,6 +38,7 @@ export default new class ProxyController extends CoreController {
             const {
                 host, connection, 'content-length': contentLength, 'transfer-encoding': transferEncoding,
                 authorization, 'x-api-key': apiKey, 'x-shopify-access-token': shopifyAccessToken,
+                'x-shopify-refresh-token': shopifyRefreshToken,
                 ...inboundHeaders
             } = req.headers;
 
