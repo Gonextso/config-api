@@ -247,6 +247,94 @@ export default class ShopifyTokenService {
         return remember(tenantId, outcome.token, outcome.row, Date.now());
     }
 
+    /**
+     * One-time migration of a stored legacy (non-expiring) token to an expiring pair, for shops
+     * whose merchants do not reopen the app. Shopify permanently invalidates the legacy token once
+     * the exchange succeeds, so the new pair is written in the same locked transaction.
+     *
+     * Crash-safe by design: the legacy columns are only replaced by the new pair. If the process
+     * dies after Shopify answered but before the commit, the row still holds the legacy token, and
+     * Shopify returns the same pair when the same legacy token is exchanged again within 7 days.
+     *
+     * Never flags re-authorization: uninstalled shops and already-invalid tokens are reported and
+     * their rows left untouched.
+     *
+     * @returns {Promise<{ migrated: boolean, reason?: string, status?: number, error?: string, token?: string }>}
+     */
+    static migrateLegacyToken = async (tenantId, shopDomain) => {
+        const outcome = await (await db()).$transaction(async tx => {
+            await lockRow(tx, tenantId);
+            const row = await tx.authShopify.findUnique({ where: { tenantId } });
+
+            if (!row?.apiKeyEncryptedData) return { migrated: false, reason: 'no_token' };
+            if (row.accessTokenExpiresAt) return { migrated: false, reason: 'already_expiring' };
+
+            let exchanged;
+            try {
+                exchanged = await this.requestLegacyExchange(shopDomain, decryptApiKey(row));
+            } catch (error) {
+                return { migrated: false, reason: 'exchange_failed', status: error.status, error: error.shopifyError ?? error.message };
+            }
+
+            const now = Date.now();
+            await tx.authShopify.update({
+                where: { tenantId },
+                data: {
+                    ...tokenColumns({
+                        accessToken: exchanged.accessToken,
+                        accessTokenExpiresAt: new Date(now + exchanged.expiresIn * 1000),
+                        refreshToken: exchanged.refreshToken,
+                        refreshTokenExpiresAt: exchanged.refreshTokenExpiresIn ? new Date(now + exchanged.refreshTokenExpiresIn * 1000) : null,
+                    }),
+                    tokenRefreshedAt: new Date(now),
+                },
+            });
+
+            return { migrated: true, token: exchanged.accessToken };
+        }, { timeout: REFRESH_TIMEOUT_MS + 15000, maxWait: 15000 });
+
+        if (outcome.migrated) cache.delete(tenantId);
+
+        return outcome;
+    }
+
+    // Token exchange of a stored legacy offline token for an expiring pair (expiring=1).
+    // Same body as refresh: fetch, form-encoded, response body never logged.
+    static requestLegacyExchange = async (shopDomain, legacyToken) => {
+        const response = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Accept: 'application/json',
+            },
+            body: new URLSearchParams({
+                client_id: process.env.SHOPIFY_CLIENT_ID ?? '',
+                client_secret: process.env.SHOPIFY_CLIENT_SECRET ?? '',
+                grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+                subject_token: legacyToken,
+                subject_token_type: 'urn:shopify:params:oauth:token-type:offline-access-token',
+                requested_token_type: 'urn:shopify:params:oauth:token-type:offline-access-token',
+                expiring: '1',
+            }),
+            signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+        });
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok || !body.access_token || !body.expires_in || !body.refresh_token) {
+            const error = new Error(`Shopify legacy token exchange failed for ${shopDomain}: HTTP ${response.status} ${body.error ?? ''}`.trim());
+            error.status = response.status;
+            error.shopifyError = typeof body.error === 'string' ? body.error : undefined;
+            throw error;
+        }
+
+        return {
+            accessToken: body.access_token,
+            expiresIn: Number(body.expires_in),
+            refreshToken: body.refresh_token,
+            refreshTokenExpiresIn: body.refresh_token_expires_in ? Number(body.refresh_token_expires_in) : null,
+        };
+    }
+
     // POST /admin/oauth/access_token with grant_type=refresh_token. Uses fetch on purpose:
     // the shared HTTP helpers log response bodies, which would leak the new tokens.
     static requestRefresh = async (shopDomain, refreshToken) => {
