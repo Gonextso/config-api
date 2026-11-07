@@ -15,6 +15,7 @@ import ShopifyCache from "../cache/ShopifyCache.js";
 import SystemCodes from "../enums/SystemCodes.js";
 import ShopifyBillingBusiness from "../business/shopify/BillingBusiness.js";
 import LogHelper from "../helpers/LogHelper.js";
+import AppTokenHelper from "../helpers/AppTokenHelper.js";
 import { resolveSubscriptionPlan, planBillingLimits } from "../helpers/SubscriptionPlanMap.js";
 
 export default new class ShopifyAuthController extends CoreController {
@@ -25,7 +26,11 @@ export default new class ShopifyAuthController extends CoreController {
 
     initializeTenant = async (req, res) => {
         let result = { isSuccess: true, info: "", status: HttpStatusCodes.SUCCESS, content: null };
-        let accessToken = req.headers['x-api-key'] ?? "";
+        // The Shopify offline token is still sent here so it can be stored for background syncs.
+        // New app builds send it as x-shopify-access-token next to a bearer app token; older
+        // builds send it as x-api-key with no bearer token.
+        let accessToken = req.headers['x-shopify-access-token'] ?? req.headers['x-api-key'] ?? "";
+        const bearer = AppTokenHelper.getBearerToken(req);
 
         const work = async _ => {
             try {
@@ -35,6 +40,19 @@ export default new class ShopifyAuthController extends CoreController {
                     result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: "Missing tenant info in request body" };
 
                     return result;
+                }
+
+                if (bearer) {
+                    let claims;
+                    try {
+                        claims = AppTokenHelper.verify(bearer);
+                    } catch (error) {
+                        return { ...result, status: HttpStatusCodes.UNAUTHORIZED, info: `Unauthorized access: ${error.message}` };
+                    }
+
+                    if (claims.tenantName !== newTenant.name) {
+                        return { ...result, status: HttpStatusCodes.UNAUTHORIZED, info: "Tenant name does not match the authenticated shop" };
+                    }
                 }
                 let shop = null;
 

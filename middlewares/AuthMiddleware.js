@@ -5,6 +5,8 @@ import ShopifyGqlAPI from "../apis/ShopifyGqlAPI.js";
 import Tenant from "../models/db/postgres/Tenant.js";
 import { isAxiosError } from "axios";
 import UuidHelper from "../helpers/UuidHelper.js";
+import AppTokenHelper from "../helpers/AppTokenHelper.js";
+import LogHelper from "../helpers/LogHelper.js";
 
 export default new class AuthMiddleware extends CoreController {
     constructor() {
@@ -25,13 +27,45 @@ export default new class AuthMiddleware extends CoreController {
         return next();
     }
 
-    isShopifyAuthenticated = async (req, res, next) => {
+    // Resolves the calling shop from the app-minted bearer token (see AppTokenHelper).
+    // Falls back to the legacy flow (hash of the raw Shopify token in x-api-key) so the
+    // app and config-api can be deployed independently; remove the fallback once every
+    // app deployment sends bearer tokens.
+    resolveShopifyTenant = async (req) => {
+        const bearer = AppTokenHelper.getBearerToken(req);
+
+        if (bearer) {
+            let claims;
+            try {
+                claims = AppTokenHelper.verify(bearer);
+            } catch (error) {
+                return { error: error.message };
+            }
+
+            const tenant = await Tenant.findOne({ name: claims.tenantName });
+            return { tenant, claims };
+        }
+
         const rawApiKey = req.headers['x-api-key'] ?? "";
-        const apiKey = CryptoHelper.hashKey(rawApiKey);
-        
+        if (!rawApiKey) return { tenant: null };
+
         const tenant = await Tenant.findOne({
-            'shopify.apiKey.hash': apiKey
+            'shopify.apiKey.hash': CryptoHelper.hashKey(rawApiKey)
         });
+        if (tenant) new LogHelper(tenant).warn(`[AuthMiddleware] Legacy x-api-key auth used for ${req.method} ${req.originalUrl}`);
+
+        return { tenant, legacy: true };
+    }
+
+    isShopifyAuthenticated = async (req, res, next) => {
+        const { tenant, error } = await this.resolveShopifyTenant(req);
+
+        if (error) {
+            return this.response(res, {
+                status: HttpStatusCodes.UNAUTHORIZED,
+                info: `Unauthorized access: ${error}`
+            });
+        }
 
         if (!tenant) {
             return this.response(res, {
