@@ -1,5 +1,6 @@
 import CoreAPI from "../core/CoreAPI.js";
 import storeQueries from "../models/shopify/queries/store.js";
+import ShopifyTokenService from "../helpers/ShopifyTokenService.js";
 
 export default class ShopifyGqlAPI extends CoreAPI {
     constructor(tenant) {
@@ -7,16 +8,40 @@ export default class ShopifyGqlAPI extends CoreAPI {
         this.config = tenant?.shopify;
     }
 
+    // Resolved per call (not once per request) so long-running work survives token rotation.
+    // Tenants loaded from the database go through ShopifyTokenService; ad-hoc configs used
+    // during install (no tenant id yet) keep using the token they were given.
+    accessToken = async (rejectedToken) => {
+        const tenantId = this.tenant?.id ?? this.tenant?._id;
+        if (tenantId && this.config?.name) {
+            const token = await ShopifyTokenService.getAccessToken(String(tenantId), `${this.config.name}.myshopify.com`, { rejectedToken });
+            if (token) return token;
+        }
+
+        return this.config.decryptedApiKey;
+    }
+
     query = async (query, variables) => {
-        const response = await this.httpRequest.gpost(`https://${this.config.name}.myshopify.com/admin/api/${process.env.SHOPIFY_API_VERSION}/graphql.json`, {
-            query,
-            variables
-        }, {
+        const url = `https://${this.config.name}.myshopify.com/admin/api/${process.env.SHOPIFY_API_VERSION}/graphql.json`;
+        const send = token => this.httpRequest.gpost(url, { query, variables }, {
             headers: {
                 'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': this.config.decryptedApiKey
+                'X-Shopify-Access-Token': token
             }
         });
+
+        const token = await this.accessToken();
+        let response;
+        try {
+            response = await send(token);
+        } catch (error) {
+            if (error?.response?.status !== 401) throw error;
+
+            // The token may have been rotated or retired elsewhere; retry once with a fresh one.
+            const retryToken = await this.accessToken(token);
+            if (!retryToken || retryToken === token) throw error;
+            response = await send(retryToken);
+        }
 
         return response.data;
     }
