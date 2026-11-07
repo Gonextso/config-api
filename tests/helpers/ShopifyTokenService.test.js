@@ -272,6 +272,22 @@ describe('ShopifyTokenService', () => {
             expect(mockPrisma.$transaction).not.toHaveBeenCalled();
         });
 
+        it('refuses a new expiring token that arrives without its refresh token', async () => {
+            rows.set(TENANT, { ...accessColumns('shpat_a', new Date(Date.now() + 10 * MINUTE)), ...refreshColumns('shprt_a') });
+
+            expect(await ShopifyTokenService.storeTokens(TENANT, { accessToken: 'shpat_b', accessTokenExpiresAt: inOneHour() }))
+                .toEqual({ stored: false, reason: 'missing_refresh_token' });
+            expect(decrypt(rows.get(TENANT), 'refreshToken')).toBe('shprt_a');
+        });
+
+        it('treats a known expiring token re-sent without refresh token as unchanged', async () => {
+            const expiresAt = new Date(Date.now() + 40 * MINUTE);
+            rows.set(TENANT, { ...accessColumns('shpat_a', expiresAt), ...refreshColumns('shprt_a') });
+
+            expect(await ShopifyTokenService.storeTokens(TENANT, { accessToken: 'shpat_a', accessTokenExpiresAt: expiresAt.toISOString() }))
+                .toEqual({ stored: false, reason: 'unchanged' });
+        });
+
         it('invalidates the cached token after storing', async () => {
             rows.set(TENANT, { ...accessColumns('shpat_cached', new Date(Date.now() + 30 * MINUTE)), ...refreshColumns('shprt_a') });
             expect(await ShopifyTokenService.getAccessToken(TENANT, SHOP)).toBe('shpat_cached');

@@ -25,6 +25,26 @@ export default new class ShopifyAuthController extends CoreController {
         this.api = new ShopifyGqlAPI();
     }
 
+    // Receives every offline token pair the app obtains (token exchange) so the backend stays the
+    // single owner of the refresh token. Guarded by isAppTokenAuthenticated (req.tenant is the shop).
+    storeOfflineToken = async (req, res) => {
+        const { accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt } = req.body ?? {};
+
+        if (!accessToken || typeof accessToken !== 'string') {
+            return this.response(res, { status: HttpStatusCodes.BAD_REQUEST, info: "accessToken is required" });
+        }
+
+        const result = await ShopifyTokenService.storeTokens(String(req.tenant.id || req.tenant._id), {
+            accessToken,
+            accessTokenExpiresAt,
+            refreshToken,
+            refreshTokenExpiresAt,
+        });
+        new LogHelper(req.tenant).info2(`[storeOfflineToken] ${result.stored ? 'stored' : `kept existing (${result.reason})`}`);
+
+        return this.response(res, { status: HttpStatusCodes.SUCCESS, content: result });
+    }
+
     initializeTenant = async (req, res) => {
         let result = { isSuccess: true, info: "", status: HttpStatusCodes.SUCCESS, content: null };
         // The Shopify offline token is still sent here so it can be stored for background syncs.

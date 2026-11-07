@@ -142,12 +142,19 @@ export default class ShopifyTokenService {
             await lockRow(tx, tenantId);
             const row = await tx.authShopify.findUnique({ where: { tenantId } });
 
+            const sameToken = row?.apiKeyHash === CryptoHelper.hashKey(accessToken);
+
+            // An expiring token is only useful here with its refresh token: storing it alone would
+            // drop the refresh token we hold and strand the tenant within the hour. The app strips
+            // refresh tokens from its local sessions, so it legitimately re-sends known tokens without one.
+            if (incoming.accessTokenExpiresAt && !incoming.refreshToken) {
+                return { stored: false, reason: sameToken ? 'unchanged' : 'missing_refresh_token' };
+            }
+
             if (!row) {
                 await tx.authShopify.create({ data: { tenantId, ...tokenColumns(incoming) } });
                 return { stored: true };
             }
-
-            const sameToken = row.apiKeyHash === CryptoHelper.hashKey(accessToken);
 
             if (row.accessTokenExpiresAt && !incoming.accessTokenExpiresAt) {
                 return { stored: false, reason: 'would_downgrade_to_non_expiring' };
