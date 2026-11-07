@@ -33,7 +33,13 @@ export default new class ProxyController extends CoreController {
 
             const method = req.method.toLowerCase();
 
-            const { host, connection, 'content-length': contentLength, 'transfer-encoding': transferEncoding, ...inboundHeaders } = req.headers;
+            // Credentials are consumed here (AuthMiddleware) and must not reach integration-api,
+            // which trusts x-tenant-id set below.
+            const {
+                host, connection, 'content-length': contentLength, 'transfer-encoding': transferEncoding,
+                authorization, 'x-api-key': apiKey, 'x-shopify-access-token': shopifyAccessToken,
+                ...inboundHeaders
+            } = req.headers;
 
             const axiosConfig = {
                 method,
