@@ -25,7 +25,7 @@ await jest.unstable_mockModule('../../apis/ShopifyGqlAPI.js', () => ({
 }));
 
 await jest.unstable_mockModule('../../helpers/CryptoHelper.js', () => ({
-  default: {},
+  default: { hashKey: jest.fn(() => 'hashed-token') },
 }));
 
 await jest.unstable_mockModule('../../business/shopify/StoreBusiness.js', () => ({
@@ -33,7 +33,7 @@ await jest.unstable_mockModule('../../business/shopify/StoreBusiness.js', () => 
 }));
 
 await jest.unstable_mockModule('../../helpers/SystemHelper.js', () => ({
-  default: {},
+  default: { createTransaction: jest.fn((_meta, _key, work) => work()) },
 }));
 
 await jest.unstable_mockModule('../../models/db/postgres/SuccessOrder.js', () => ({
@@ -69,7 +69,13 @@ await jest.unstable_mockModule('../../business/shopify/BillingBusiness.js', () =
 }));
 
 await jest.unstable_mockModule('../../helpers/LogHelper.js', () => ({
-  default: jest.fn(),
+  default: jest.fn().mockImplementation(() => ({ info2: jest.fn(), warn: jest.fn(), error: jest.fn() })),
+}));
+
+const mockTokenService = { storeTokens: jest.fn() };
+
+await jest.unstable_mockModule('../../helpers/ShopifyTokenService.js', () => ({
+  default: mockTokenService,
 }));
 
 await jest.unstable_mockModule('../../helpers/SubscriptionPlanMap.js', () => ({
@@ -82,6 +88,81 @@ await jest.unstable_mockModule('../../core/CoreControler.js', () => ({
 }));
 
 const { default: ShopifyAuthController } = await import('../../controllers/ShopifyAuthController.js');
+const { default: AppTokenHelper } = await import('../../helpers/AppTokenHelper.js');
+
+describe('ShopifyAuthController.storeOfflineToken', () => {
+  const mockRes = {};
+  const tenant = { id: 'tenant-1', name: 'demo-store' };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('stores the pair for the authenticated tenant', async () => {
+    mockTokenService.storeTokens.mockResolvedValue({ stored: true });
+    const body = {
+      accessToken: 'shpat_new',
+      accessTokenExpiresAt: '2026-11-07T18:00:00.000Z',
+      refreshToken: 'shprt_new',
+      refreshTokenExpiresAt: '2027-02-05T17:00:00.000Z',
+    };
+
+    await ShopifyAuthController.storeOfflineToken({ tenant, body }, mockRes);
+
+    expect(mockTokenService.storeTokens).toHaveBeenCalledWith('tenant-1', body);
+    expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
+      status: HttpStatusCodes.SUCCESS,
+      content: { stored: true },
+    });
+  });
+
+  it('rejects a request without an access token', async () => {
+    await ShopifyAuthController.storeOfflineToken({ tenant, body: { refreshToken: 'shprt' } }, mockRes);
+
+    expect(mockTokenService.storeTokens).not.toHaveBeenCalled();
+    expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, {
+      status: HttpStatusCodes.BAD_REQUEST,
+      info: 'accessToken is required',
+    });
+  });
+});
+
+describe('ShopifyAuthController.initializeTenant app token checks', () => {
+  const SECRET = 'test-app-secret';
+  let mockRes;
+
+  beforeEach(() => {
+    process.env.SHOPIFY_CLIENT_SECRET = SECRET;
+    mockRes = {};
+    jest.clearAllMocks();
+  });
+
+  const request = (bearerShop, name, secret = SECRET) => ({
+    headers: {
+      authorization: `Bearer ${AppTokenHelper.mint(bearerShop, { secret })}`,
+      'x-shopify-access-token': 'shpat_offline',
+    },
+    body: { name },
+  });
+
+  it('rejects a bearer token with an invalid signature', async () => {
+    await ShopifyAuthController.initializeTenant(request('demo-store.myshopify.com', 'demo-store', 'wrong'), mockRes);
+
+    expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, expect.objectContaining({
+      status: HttpStatusCodes.UNAUTHORIZED,
+      info: 'Unauthorized access: Invalid token signature',
+    }));
+  });
+
+  it('rejects a body tenant name that differs from the authenticated shop', async () => {
+    await ShopifyAuthController.initializeTenant(request('demo-store.myshopify.com', 'victim-store'), mockRes);
+
+    expect(mockCoreController.response).toHaveBeenCalledWith(mockRes, expect.objectContaining({
+      status: HttpStatusCodes.UNAUTHORIZED,
+      info: 'Tenant name does not match the authenticated shop',
+    }));
+  });
+});
 
 describe('ShopifyAuthController consent webhooks', () => {
   let mockReq;

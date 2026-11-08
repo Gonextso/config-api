@@ -191,6 +191,13 @@ model AuthShopify {
   apiKeyEncryptedData String?  @map("api_key_encrypted_data")
   apiKeyIv            String?  @map("api_key_iv")
   apiKeyAuthTag       String?  @map("api_key_auth_tag")
+  accessTokenExpiresAt      DateTime? @map("access_token_expires_at")
+  refreshTokenEncryptedData String?   @map("refresh_token_encrypted_data")
+  refreshTokenIv            String?   @map("refresh_token_iv")
+  refreshTokenAuthTag       String?   @map("refresh_token_auth_tag")
+  refreshTokenExpiresAt     DateTime? @map("refresh_token_expires_at")
+  tokenRefreshedAt          DateTime? @map("token_refreshed_at")
+  reauthRequiredAt          DateTime? @map("reauth_required_at")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

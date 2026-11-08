@@ -15,6 +15,8 @@ import ShopifyCache from "../cache/ShopifyCache.js";
 import SystemCodes from "../enums/SystemCodes.js";
 import ShopifyBillingBusiness from "../business/shopify/BillingBusiness.js";
 import LogHelper from "../helpers/LogHelper.js";
+import AppTokenHelper from "../helpers/AppTokenHelper.js";
+import ShopifyTokenService from "../helpers/ShopifyTokenService.js";
 import { resolveSubscriptionPlan, planBillingLimits } from "../helpers/SubscriptionPlanMap.js";
 
 export default new class ShopifyAuthController extends CoreController {
@@ -23,9 +25,40 @@ export default new class ShopifyAuthController extends CoreController {
         this.api = new ShopifyGqlAPI();
     }
 
+    // Receives every offline token pair the app obtains (token exchange) so the backend stays the
+    // single owner of the refresh token. Guarded by isAppTokenAuthenticated (req.tenant is the shop).
+    storeOfflineToken = async (req, res) => {
+        const { accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt } = req.body ?? {};
+
+        if (!accessToken || typeof accessToken !== 'string') {
+            return this.response(res, { status: HttpStatusCodes.BAD_REQUEST, info: "accessToken is required" });
+        }
+
+        const result = await ShopifyTokenService.storeTokens(String(req.tenant.id || req.tenant._id), {
+            accessToken,
+            accessTokenExpiresAt,
+            refreshToken,
+            refreshTokenExpiresAt,
+        });
+        new LogHelper(req.tenant).info2(`[storeOfflineToken] ${result.stored ? 'stored' : `kept existing (${result.reason})`}`);
+
+        return this.response(res, { status: HttpStatusCodes.SUCCESS, content: result });
+    }
+
     initializeTenant = async (req, res) => {
         let result = { isSuccess: true, info: "", status: HttpStatusCodes.SUCCESS, content: null };
-        let accessToken = req.headers['x-api-key'] ?? "";
+        // The Shopify offline token is still sent here so it can be stored for background syncs.
+        // New app builds send it as x-shopify-access-token next to a bearer app token; older
+        // builds send it as x-api-key with no bearer token.
+        let accessToken = req.headers['x-shopify-access-token'] ?? req.headers['x-api-key'] ?? "";
+        const bearer = AppTokenHelper.getBearerToken(req);
+        // Present once the app requests expiring offline tokens; absent for legacy non-expiring ones.
+        const incomingTokens = {
+            accessToken,
+            accessTokenExpiresAt: req.headers['x-shopify-access-token-expires-at'] || null,
+            refreshToken: req.headers['x-shopify-refresh-token'] || null,
+            refreshTokenExpiresAt: req.headers['x-shopify-refresh-token-expires-at'] || null,
+        };
 
         const work = async _ => {
             try {
@@ -35,6 +68,19 @@ export default new class ShopifyAuthController extends CoreController {
                     result = { ...result, status: HttpStatusCodes.BAD_REQUEST, info: "Missing tenant info in request body" };
 
                     return result;
+                }
+
+                if (bearer) {
+                    let claims;
+                    try {
+                        claims = AppTokenHelper.verify(bearer);
+                    } catch (error) {
+                        return { ...result, status: HttpStatusCodes.UNAUTHORIZED, info: `Unauthorized access: ${error.message}` };
+                    }
+
+                    if (claims.tenantName !== newTenant.name) {
+                        return { ...result, status: HttpStatusCodes.UNAUTHORIZED, info: "Tenant name does not match the authenticated shop" };
+                    }
                 }
                 let shop = null;
 
@@ -114,17 +160,17 @@ export default new class ShopifyAuthController extends CoreController {
                     const tenantId = existing.id || existing._id;
                     const patch = {};
 
-                    const existingApiKeyHash = existing.shopify?.apiKey?.hash;
-                    if (existingApiKeyHash !== apiKey) {
-                        logger.info2(`[initializeTenant] ApiKey hash differs for tenant ${existing.name} (ID: ${tenantId}). Existing: ${existingApiKeyHash?.substring(0, 16) || 'N/A'}..., New: ${apiKey.substring(0, 16)}...`);
-                        patch['shopify.apiKey'] = { ...CryptoHelper.encrypt(accessToken) };
-                    }
+                    // Token writes go through ShopifyTokenService so they serialize with background
+                    // refreshes and never replace a newer expiring pair with an older/legacy token.
+                    const tokenResult = await ShopifyTokenService.storeTokens(String(tenantId), incomingTokens);
+                    logger.info2(`[initializeTenant] Token for tenant ${existing.name} (ID: ${tenantId}): ${tokenResult.stored ? 'stored' : `kept (${tokenResult.reason})`}`);
+
                     if (!existing.shopify?.shopId && shop.id) patch['shopify.shopId'] = String(shop.id);
                     if (!existing.shopify?.domain && domain) patch['shopify.domain'] = domain;
 
                     if (Object.keys(patch).length === 0) {
-                        logger.info2(`[initializeTenant] Tenant ${existing.name} is up to date, skipping update.`);
-                        return existing;
+                        if (!tokenResult.stored) logger.info2(`[initializeTenant] Tenant ${existing.name} is up to date, skipping update.`);
+                        return tokenResult.stored ? await Tenant.findOne({ id: tenantId }) : existing;
                     }
 
                     await Tenant.updateOne({ id: tenantId }, patch);
@@ -208,6 +254,17 @@ export default new class ShopifyAuthController extends CoreController {
                 try {
                     tenant = await Tenant.create(tenantDto);
                     logger.info2(`[initializeTenant] Tenant created successfully: ${tenant.name} (ID: ${tenant.id || tenant._id})`);
+
+                    // Tenant.create stores the access token only; add expiry + refresh token when present.
+                    // A failure here must not be reported as a failed create: the tenant exists and the
+                    // next app load hands the pair over again.
+                    if (incomingTokens.accessTokenExpiresAt) {
+                        try {
+                            await ShopifyTokenService.storeTokens(String(tenant.id || tenant._id), incomingTokens);
+                        } catch (storeError) {
+                            logger.error(`[initializeTenant] Could not store expiring token for new tenant ${tenant.name}: ${storeError.message}`);
+                        }
+                    }
                     return { isSuccess: true, status: HttpStatusCodes.CREATED, info: "Tenant initialized successfully", content: tenant };
                 } catch (error) {
                     // Duplicate domain/shopId hatasını yakala; mevcut tenant'ı bulup eşitle

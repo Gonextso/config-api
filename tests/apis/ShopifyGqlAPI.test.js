@@ -15,6 +15,12 @@ await jest.unstable_mockModule('../../core/CoreAPI.js', () => ({
   default: mockCoreAPI,
 }));
 
+const mockTokenService = { getAccessToken: jest.fn() };
+
+await jest.unstable_mockModule('../../helpers/ShopifyTokenService.js', () => ({
+  default: mockTokenService,
+}));
+
 const { default: ShopifyGqlAPI } = await import('../../apis/ShopifyGqlAPI.js');
 
 describe('ShopifyGqlAPI', () => {
@@ -285,5 +291,63 @@ describe('ShopifyGqlAPI', () => {
       );
     });
   });
-});
 
+  describe('token resolution for stored tenants', () => {
+    const unauthorized = () => Object.assign(new Error('Request failed with status code 401'), { response: { status: 401 } });
+
+    beforeEach(() => {
+      api.tenant = { id: 'tenant-1' };
+      mockTokenService.getAccessToken.mockReset();
+    });
+
+    it('uses the token from ShopifyTokenService instead of the request-time copy', async () => {
+      mockTokenService.getAccessToken.mockResolvedValue('shpat_service');
+      mockHttpRequest.gpost.mockResolvedValue({ data: { data: { ok: true } } });
+
+      await api.query('query { shop { id } }');
+
+      expect(mockTokenService.getAccessToken).toHaveBeenCalledWith('tenant-1', 'test-shop.myshopify.com', { rejectedToken: undefined });
+      expect(mockHttpRequest.gpost.mock.calls[0][2].headers['X-Shopify-Access-Token']).toBe('shpat_service');
+    });
+
+    it('falls back to the request-time token when the service has none', async () => {
+      mockTokenService.getAccessToken.mockResolvedValue(null);
+      mockHttpRequest.gpost.mockResolvedValue({ data: { data: {} } });
+
+      await api.query('query { shop { id } }');
+
+      expect(mockHttpRequest.gpost.mock.calls[0][2].headers['X-Shopify-Access-Token']).toBe('test-api-key');
+    });
+
+    it('retries once with a refreshed token after a 401', async () => {
+      mockTokenService.getAccessToken
+        .mockResolvedValueOnce('shpat_stale')
+        .mockResolvedValueOnce('shpat_refreshed');
+      mockHttpRequest.gpost
+        .mockRejectedValueOnce(unauthorized())
+        .mockResolvedValueOnce({ data: { data: { ok: true } } });
+
+      const result = await api.query('query { shop { id } }');
+
+      expect(result).toEqual({ data: { ok: true } });
+      expect(mockTokenService.getAccessToken).toHaveBeenLastCalledWith('tenant-1', 'test-shop.myshopify.com', { rejectedToken: 'shpat_stale' });
+      expect(mockHttpRequest.gpost.mock.calls[1][2].headers['X-Shopify-Access-Token']).toBe('shpat_refreshed');
+    });
+
+    it('rethrows the 401 when no newer token is available', async () => {
+      mockTokenService.getAccessToken.mockResolvedValue('shpat_same');
+      mockHttpRequest.gpost.mockRejectedValue(unauthorized());
+
+      await expect(api.query('query { shop { id } }')).rejects.toThrow('401');
+      expect(mockHttpRequest.gpost).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry non-401 errors', async () => {
+      mockTokenService.getAccessToken.mockResolvedValue('shpat_ok');
+      mockHttpRequest.gpost.mockRejectedValue(Object.assign(new Error('boom'), { response: { status: 500 } }));
+
+      await expect(api.query('query { shop { id } }')).rejects.toThrow('boom');
+      expect(mockTokenService.getAccessToken).toHaveBeenCalledTimes(1);
+    });
+  });
+});
