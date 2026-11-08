@@ -522,6 +522,10 @@ export default new class ShopifyAuthController extends CoreController {
                             is_opt_in: String(consent?.state || "").toLowerCase() === "subscribed",
                         },
                     },
+                    audit: {
+                        sourceEventId: req.get("x-shopify-webhook-id") || null,
+                        sourcePayload: req.body,
+                    },
                 },
                 {
                     headers: {
@@ -598,6 +602,10 @@ export default new class ShopifyAuthController extends CoreController {
                             date: consent?.consent_updated_at,
                             is_opt_in: String(consent?.state || "").toLowerCase() === "subscribed",
                         },
+                    },
+                    audit: {
+                        sourceEventId: req.get("x-shopify-webhook-id") || null,
+                        sourcePayload: req.body,
                     },
                 },
                 {
